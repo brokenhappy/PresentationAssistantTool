@@ -4,7 +4,6 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
-import android.provider.Settings
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -19,6 +18,7 @@ import com.woutwerkman.pa.ui.MobileApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import java.util.UUID
 
 class MainActivity : ComponentActivity() {
 
@@ -33,7 +33,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val deviceId = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID) ?: "android-unknown"
+        val deviceId = getOrCreateDeviceId()
 
         requestBlePermissions()
 
@@ -58,6 +58,13 @@ class MainActivity : ComponentActivity() {
                     },
                 )
             }
+        }
+    }
+
+    private fun getOrCreateDeviceId(): String {
+        val prefs = getSharedPreferences("pa_device", MODE_PRIVATE)
+        return prefs.getString("device_id", null) ?: UUID.randomUUID().toString().also {
+            prefs.edit().putString("device_id", it).apply()
         }
     }
 
