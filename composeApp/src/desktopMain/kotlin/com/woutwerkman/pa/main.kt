@@ -44,6 +44,7 @@ fun main() = application {
     val state by engine.state.collectAsState()
     val connectedPeers by bleService.connectedPeers.collectAsState()
     val bleConnectionState by bleService.connectionState.collectAsState()
+    val bleError by bleService.error.collectAsState()
 
     var showMinified by remember { mutableStateOf(true) }
     var showExpanded by remember { mutableStateOf(false) }
@@ -112,6 +113,7 @@ fun main() = application {
                     connectionState = bleConnectionState,
                     connectedPeers = connectedPeers,
                     pairedPeers = pairedPeers,
+                    bleError = bleError,
                 )
             }
         }

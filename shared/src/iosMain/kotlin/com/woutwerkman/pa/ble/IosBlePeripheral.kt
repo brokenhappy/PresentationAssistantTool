@@ -28,6 +28,9 @@ class IosBlePeripheral(
     private val _incomingMessages = MutableSharedFlow<BleMessage>()
     override val incomingMessages: Flow<BleMessage> = _incomingMessages.asSharedFlow()
 
+    private val _error = MutableStateFlow<BleError?>(null)
+    override val error: StateFlow<BleError?> = _error.asStateFlow()
+
     private var peripheralManager: CBPeripheralManager? = null
     private var connectedCentral: CBCentral? = null
     private var commandCharacteristic: CBMutableCharacteristic? = null
@@ -73,8 +76,21 @@ class IosBlePeripheral(
 
     private inner class PeripheralDelegate : NSObject(), CBPeripheralManagerDelegateProtocol {
         override fun peripheralManagerDidUpdateState(peripheral: CBPeripheralManager) {
-            if (peripheral.state == CBPeripheralManagerStatePoweredOn) {
-                setupService(peripheral)
+            when (peripheral.state) {
+                CBPeripheralManagerStatePoweredOn -> {
+                    _error.value = null
+                    setupService(peripheral)
+                }
+                CBPeripheralManagerStatePoweredOff -> {
+                    _error.value = BleError.BluetoothDisabled
+                }
+                CBPeripheralManagerStateUnauthorized -> {
+                    _error.value = BleError.PermissionDenied
+                }
+                CBPeripheralManagerStateUnsupported -> {
+                    _error.value = BleError.BluetoothUnavailable
+                }
+                else -> {}
             }
         }
 
@@ -109,7 +125,10 @@ class IosBlePeripheral(
         }
 
         override fun peripheralManager(peripheral: CBPeripheralManager, didAddService: CBService, error: platform.Foundation.NSError?) {
-            if (error != null) return
+            if (error != null) {
+                _error.value = BleError.AdvertisingFailed(reason = error.localizedDescription)
+                return
+            }
             val serviceUuid = CBUUID.UUIDWithString(BleConfig.SERVICE_UUID)
             peripheral.startAdvertising(mapOf(
                 CBAdvertisementDataServiceUUIDsKey to listOf(serviceUuid),
@@ -157,6 +176,7 @@ class IosBlePeripheral(
             didSubscribeToCharacteristic: CBCharacteristic,
         ) {
             connectedCentral = central
+            _error.value = null
             _connectionState.value = BleConnectionState.Connected
             val peer = PairedPeer(id = central.identifier.UUIDString, name = "Desktop")
             _connectedPeers.value = listOf(peer)

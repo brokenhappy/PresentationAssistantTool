@@ -5,7 +5,10 @@ import android.bluetooth.*
 import android.bluetooth.le.AdvertiseCallback
 import android.bluetooth.le.AdvertiseData
 import android.bluetooth.le.AdvertiseSettings
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.os.ParcelUuid
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
@@ -28,6 +31,9 @@ class AndroidBlePeripheral(
     private val _incomingMessages = MutableSharedFlow<BleMessage>()
     override val incomingMessages: Flow<BleMessage> = _incomingMessages.asSharedFlow()
 
+    private val _error = MutableStateFlow<BleError?>(null)
+    override val error: StateFlow<BleError?> = _error.asStateFlow()
+
     private var gattServer: BluetoothGattServer? = null
     private var connectedDevice: BluetoothDevice? = null
     private var advertiseCallback: AdvertiseCallback? = null
@@ -41,11 +47,25 @@ class AndroidBlePeripheral(
     private val assembler = MessageAssembler()
     private var preparedWriteBuffer = ByteArray(0)
 
+    private val bluetoothStateReceiver = object : BroadcastReceiver() {
+        override fun onReceive(ctx: Context, intent: Intent) {
+            if (intent.action != BluetoothAdapter.ACTION_STATE_CHANGED) return
+            when (intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR)) {
+                BluetoothAdapter.STATE_OFF -> _error.value = BleError.BluetoothDisabled
+                BluetoothAdapter.STATE_ON -> {
+                    _error.value = null
+                    scope.launch { startAdvertisingOrScanning() }
+                }
+            }
+        }
+    }
+
     private val gattCallback = object : BluetoothGattServerCallback() {
         override fun onConnectionStateChange(device: BluetoothDevice, status: Int, newState: Int) {
             when (newState) {
                 BluetoothProfile.STATE_CONNECTED -> {
                     connectedDevice = device
+                    _error.value = null
                     _connectionState.value = BleConnectionState.Connected
                     val peer = PairedPeer(id = device.address, name = device.name ?: "Desktop")
                     _connectedPeers.value = listOf(peer)
@@ -175,7 +195,18 @@ class AndroidBlePeripheral(
 
     override suspend fun startAdvertisingOrScanning() {
         val manager = context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
-        val adapter = manager.adapter ?: return
+        val adapter = manager.adapter
+        if (adapter == null) {
+            _error.value = BleError.BluetoothUnavailable
+            return
+        }
+        if (!adapter.isEnabled) {
+            _error.value = BleError.BluetoothDisabled
+            context.registerReceiver(bluetoothStateReceiver, IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED))
+            return
+        }
+
+        context.registerReceiver(bluetoothStateReceiver, IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED))
 
         gattServer = manager.openGattServer(context, gattCallback)
         val service = BluetoothGattService(serviceUuid, BluetoothGattService.SERVICE_TYPE_PRIMARY)
@@ -205,7 +236,11 @@ class AndroidBlePeripheral(
 
         gattServer?.addService(service)
 
-        val advertiser = adapter.bluetoothLeAdvertiser ?: return
+        val advertiser = adapter.bluetoothLeAdvertiser
+        if (advertiser == null) {
+            _error.value = BleError.BluetoothUnavailable
+            return
+        }
         val settings = AdvertiseSettings.Builder()
             .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY)
             .setConnectable(true)
@@ -219,7 +254,12 @@ class AndroidBlePeripheral(
 
         advertiseCallback = object : AdvertiseCallback() {
             override fun onStartSuccess(settingsInEffect: AdvertiseSettings?) {
+                _error.value = null
                 _connectionState.value = BleConnectionState.Scanning
+            }
+
+            override fun onStartFailure(errorCode: Int) {
+                _error.value = BleError.AdvertisingFailed(reason = "Advertise error code: $errorCode")
             }
         }
 
@@ -227,6 +267,8 @@ class AndroidBlePeripheral(
     }
 
     override suspend fun stopAdvertisingOrScanning() {
+        try { context.unregisterReceiver(bluetoothStateReceiver) } catch (_: Exception) {}
+
         val manager = context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
         val adapter = manager.adapter ?: return
 

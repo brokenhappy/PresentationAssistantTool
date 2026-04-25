@@ -34,6 +34,7 @@ fun MobileApp(
 ) {
     val connectionState by bleService.connectionState.collectAsState()
     val connectedPeers by bleService.connectedPeers.collectAsState()
+    val bleError by bleService.error.collectAsState()
     var currentScreen by remember { mutableStateOf(MobileScreen.Connection) }
     var state by remember { mutableStateOf(PresentationState()) }
     val scope = rememberCoroutineScope()
@@ -125,6 +126,7 @@ fun MobileApp(
                     connectionState = connectionState,
                     connectedDeviceName = connectedPeers.firstOrNull()?.name,
                     deviceId = deviceId,
+                    bleError = bleError,
                 )
 
                 MobileScreen.Control -> ControlView(

@@ -10,6 +10,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.woutwerkman.pa.ble.BleConnectionState
+import com.woutwerkman.pa.ble.BleError
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.seconds
 
@@ -18,6 +19,7 @@ fun MobileConnectionView(
     connectionState: BleConnectionState,
     connectedDeviceName: String?,
     deviceId: String,
+    bleError: BleError? = null,
 ) {
     Column(
         modifier = Modifier.fillMaxSize().padding(32.dp),
@@ -39,12 +41,17 @@ fun MobileConnectionView(
                 )
             }
             BleConnectionState.Scanning -> {
-                Text(
-                    text = "Waiting for connection...",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Spacer(Modifier.height(24.dp))
+                if (bleError != null) {
+                    BleErrorBanner(bleError)
+                    Spacer(Modifier.height(16.dp))
+                } else {
+                    Text(
+                        text = "Waiting for connection...",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(24.dp))
+                }
                 Text(
                     text = "Scan this QR code from the desktop app",
                     style = MaterialTheme.typography.bodyMedium,
@@ -56,13 +63,17 @@ fun MobileConnectionView(
                 DeviceIdWithCopy(deviceId)
             }
             else -> {
-                Text(
-                    text = "Setting up Bluetooth...",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Spacer(Modifier.height(16.dp))
-                CircularProgressIndicator()
+                if (bleError != null) {
+                    BleErrorBanner(bleError)
+                } else {
+                    Text(
+                        text = "Setting up Bluetooth...",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    CircularProgressIndicator()
+                }
                 Spacer(Modifier.height(24.dp))
                 Text(
                     text = "Scan this QR code from the desktop app",
@@ -75,6 +86,39 @@ fun MobileConnectionView(
                 DeviceIdWithCopy(deviceId)
             }
         }
+    }
+}
+
+@Composable
+private fun BleErrorBanner(error: BleError) {
+    val (title, description) = when (error) {
+        is BleError.BluetoothDisabled ->
+            "Bluetooth is turned off" to "Turn on Bluetooth in your device settings to connect."
+        is BleError.BluetoothUnavailable ->
+            "Bluetooth unavailable" to "This device does not support Bluetooth Low Energy."
+        is BleError.PermissionDenied ->
+            "Bluetooth permission required" to "Allow Bluetooth access in Settings to connect."
+        is BleError.AdvertisingFailed ->
+            "Connection setup failed" to (error.reason ?: "Could not start Bluetooth advertising. Try restarting the app.")
+        is BleError.ScanTimeout ->
+            "Device not found" to "Make sure the desktop app is open and try again."
+        is BleError.ConnectionFailed ->
+            "Connection failed" to "Could not connect to the device. Try again."
+    }
+
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.error,
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = description,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
     }
 }
 

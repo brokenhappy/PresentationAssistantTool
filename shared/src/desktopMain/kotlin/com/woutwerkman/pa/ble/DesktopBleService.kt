@@ -24,6 +24,9 @@ class DesktopBleService(
     private val _incomingMessages = MutableSharedFlow<BleMessage>()
     override val incomingMessages: Flow<BleMessage> = _incomingMessages.asSharedFlow()
 
+    private val _error = MutableStateFlow<BleError?>(null)
+    override val error: StateFlow<BleError?> = _error.asStateFlow()
+
     private val peripherals = mutableMapOf<String, Peripheral>()
     private val peerInfo = mutableMapOf<String, PairedPeer>()
     private val observeJobs = mutableMapOf<String, Job>()
@@ -95,15 +98,19 @@ class DesktopBleService(
     fun scanForDeviceId(targetDeviceId: String) {
         scanJob?.cancel()
         reconnectJob?.cancel()
+        _error.value = null
         scanJob = scope.launch {
             _connectionState.value = BleConnectionState.Scanning
             try {
                 withTimeout(BleConfig.SCAN_DURATION_MS.milliseconds * 3) {
                     connectToDevice(targetDeviceId)
                 }
+            } catch (_: TimeoutCancellationException) {
+                _error.value = BleError.ScanTimeout(targetDeviceId)
             } catch (_: CancellationException) {
                 throw CancellationException()
             } catch (_: Exception) {
+                _error.value = BleError.BluetoothUnavailable
             } finally {
                 updateConnectionState()
                 startAutoReconnect()
@@ -137,6 +144,7 @@ class DesktopBleService(
 
                 if (deviceId == targetDeviceId) {
                     found = true
+                    _error.value = null
                     val peer = PairedPeer(id = deviceId, name = advertisement.name ?: "Unknown Device")
                     synchronized(peripherals) {
                         peripherals[deviceId] = p

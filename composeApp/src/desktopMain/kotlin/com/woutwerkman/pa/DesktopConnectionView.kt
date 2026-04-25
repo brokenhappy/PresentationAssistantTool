@@ -9,6 +9,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.unit.dp
 import com.woutwerkman.pa.ble.BleConnectionState
+import com.woutwerkman.pa.ble.BleError
 import com.woutwerkman.pa.ble.DesktopBleService
 import com.woutwerkman.pa.ble.PairedPeer
 import com.woutwerkman.pa.qrscanner.QrScanResult
@@ -22,6 +23,7 @@ fun DesktopConnectionView(
     connectionState: BleConnectionState,
     connectedPeers: List<PairedPeer>,
     pairedPeers: List<PairedPeer>,
+    bleError: BleError? = null,
 ) {
     var isScanning by remember { mutableStateOf(false) }
     var scanStatus by remember { mutableStateOf("") }
@@ -80,6 +82,17 @@ fun DesktopConnectionView(
                 if (connectionState == BleConnectionState.Scanning) "Scanning for device..." else "Connecting...",
                 style = MaterialTheme.typography.bodyMedium,
             )
+            Spacer(Modifier.height(16.dp))
+        }
+
+        if (bleError != null) {
+            DesktopBleErrorCard(bleError, onRetry = {
+                when (bleError) {
+                    is BleError.ScanTimeout -> bleService.scanForDeviceId(bleError.targetDeviceId)
+                    is BleError.ConnectionFailed -> {}
+                    else -> {}
+                }
+            })
             Spacer(Modifier.height(16.dp))
         }
 
@@ -205,6 +218,55 @@ fun DesktopConnectionView(
                             Text("Forget", style = MaterialTheme.typography.bodySmall)
                         }
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DesktopBleErrorCard(error: BleError, onRetry: () -> Unit) {
+    val (title, description) = when (error) {
+        is BleError.ScanTimeout ->
+            "Device not found" to "Make sure the phone app is open and Bluetooth is enabled on both devices."
+        is BleError.BluetoothUnavailable ->
+            "Bluetooth unavailable" to "Make sure your computer has Bluetooth enabled."
+        is BleError.BluetoothDisabled ->
+            "Bluetooth is turned off" to "Enable Bluetooth in System Settings."
+        is BleError.ConnectionFailed ->
+            "Connection failed" to "Found a device but could not connect. Try again."
+        is BleError.PermissionDenied ->
+            "Bluetooth permission required" to "Grant Bluetooth permission in System Settings."
+        is BleError.AdvertisingFailed ->
+            "Bluetooth error" to (error.reason ?: "An unexpected Bluetooth error occurred.")
+    }
+
+    val showRetry = error is BleError.ScanTimeout || error is BleError.ConnectionFailed
+
+    Surface(
+        color = MaterialTheme.colorScheme.errorContainer,
+        shape = MaterialTheme.shapes.medium,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onErrorContainer,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onErrorContainer,
+            )
+            if (showRetry) {
+                Spacer(Modifier.height(8.dp))
+                TextButton(onClick = onRetry) {
+                    Text("Retry")
                 }
             }
         }
