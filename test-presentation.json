@@ -1,0 +1,19 @@
+{
+    "title": "KotlinConf 2026 — Building Multiplatform Apps",
+    "bulletPoints": {
+        "intro": "Welcome and introduction to the talk",
+        "why-kmp": "Why Kotlin Multiplatform matters in 2026",
+        "architecture": "Shared architecture patterns: expect/actual, interfaces, DI",
+        "compose": "Compose Multiplatform for UI across Desktop, Android, iOS",
+        "demo-setup": "Live demo: setting up a KMP project from scratch",
+        "demo-shared": "Live demo: sharing business logic across platforms",
+        "demo-ui": "Live demo: building shared UI with Compose",
+        "platform-specific": "Handling platform-specific features (BLE, camera, notifications)",
+        "testing": "Testing strategies for multiplatform code",
+        "performance": "Performance considerations and benchmarks",
+        "migration": "Migrating existing apps to KMP incrementally",
+        "ecosystem": "The KMP ecosystem: libraries, tools, community",
+        "summary": "Key takeaways and next steps",
+        "qa": "Q&A"
+    }
+}
