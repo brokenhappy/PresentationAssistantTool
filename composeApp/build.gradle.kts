@@ -25,18 +25,17 @@ kotlin {
             implementation(compose.foundation)
             implementation(compose.material3)
             implementation(compose.components.resources)
+            implementation(libs.qrcode.kotlin)
         }
 
         androidMain.dependencies {
             implementation("androidx.activity:activity-compose:1.9.3")
-            implementation(libs.qrcode.kotlin)
         }
 
         val desktopMain by getting {
             dependencies {
                 implementation(compose.desktop.currentOs)
                 implementation(libs.kotlinx.coroutines.swing)
-                implementation(libs.qrcode.kotlin)
             }
         }
     }

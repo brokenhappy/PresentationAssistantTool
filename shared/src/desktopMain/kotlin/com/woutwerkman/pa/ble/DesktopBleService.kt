@@ -94,14 +94,19 @@ class DesktopBleService(
 
     fun scanForDeviceId(targetDeviceId: String) {
         scanJob?.cancel()
+        reconnectJob?.cancel()
         scanJob = scope.launch {
             _connectionState.value = BleConnectionState.Scanning
             try {
-                connectToDevice(targetDeviceId)
+                withTimeout(BleConfig.SCAN_DURATION_MS.milliseconds * 3) {
+                    connectToDevice(targetDeviceId)
+                }
             } catch (_: CancellationException) {
                 throw CancellationException()
             } catch (_: Exception) {
+            } finally {
                 updateConnectionState()
+                startAutoReconnect()
             }
         }
     }
@@ -147,7 +152,8 @@ class DesktopBleService(
                 }
             } catch (_: CancellationException) {
                 throw CancellationException()
-            } catch (_: Exception) {}
+            } catch (_: Exception) {
+            }
         }
     }
 

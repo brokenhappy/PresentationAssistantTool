@@ -99,20 +99,33 @@ class IosBlePeripheral(
             val deviceIdChar = CBMutableCharacteristic(
                 type = CBUUID.UUIDWithString(BleConfig.DEVICE_ID_CHAR_UUID),
                 properties = CBCharacteristicPropertyRead,
-                value = deviceId.encodeToByteArray().toNSData(),
+                value = null,
                 permissions = CBAttributePermissionsReadable,
             )
 
             val service = CBMutableService(type = serviceUuid, primary = true)
             service.setValue(listOf(cmdChar, stateChar, deviceIdChar), forKey = "characteristics")
             pm.addService(service)
+        }
 
-            pm.startAdvertising(mapOf(
+        override fun peripheralManager(peripheral: CBPeripheralManager, didAddService: CBService, error: platform.Foundation.NSError?) {
+            if (error != null) return
+            val serviceUuid = CBUUID.UUIDWithString(BleConfig.SERVICE_UUID)
+            peripheral.startAdvertising(mapOf(
                 CBAdvertisementDataServiceUUIDsKey to listOf(serviceUuid),
                 CBAdvertisementDataLocalNameKey to "PA-iOS",
             ))
-
             _connectionState.value = BleConnectionState.Scanning
+        }
+
+        override fun peripheralManager(peripheral: CBPeripheralManager, didReceiveReadRequest: CBATTRequest) {
+            if (didReceiveReadRequest.characteristic.UUID == CBUUID.UUIDWithString(BleConfig.DEVICE_ID_CHAR_UUID)) {
+                val data = deviceId.encodeToByteArray().toNSData()
+                didReceiveReadRequest.setValue(data, forKey = "value")
+                peripheral.respondToRequest(didReceiveReadRequest, withResult = CBATTErrorSuccess)
+            } else {
+                peripheral.respondToRequest(didReceiveReadRequest, withResult = CBATTErrorRequestNotSupported)
+            }
         }
 
         override fun peripheralManager(

@@ -9,8 +9,20 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import qrcode.QRCode
 
-expect fun generateQrModules(data: String): Array<BooleanArray>?
+private fun generateQrModules(data: String): Array<BooleanArray>? {
+    return try {
+        val rawData = QRCode(data).rawData
+        Array(rawData.size) { row ->
+            BooleanArray(rawData[row].size) { col ->
+                rawData[row][col].dark
+            }
+        }
+    } catch (_: Exception) {
+        null
+    }
+}
 
 @Composable
 fun QrCodeImage(
