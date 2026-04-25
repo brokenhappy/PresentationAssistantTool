@@ -27,7 +27,7 @@ fun MinifiedView(
     ) {
         when {
             state.profile == null -> EmptyState()
-            state.isActive -> ActiveState(state, onEvent, onExpand, onHide)
+            state.isActive -> ActiveState(state, onExpand, onHide)
             else -> IdleState(state, onEvent, onExpand, onHide)
         }
     }
@@ -89,7 +89,6 @@ private fun IdleState(
 @Composable
 private fun ActiveState(
     state: PresentationState,
-    onEvent: (PresentationEvent) -> Unit,
     onExpand: () -> Unit,
     onHide: () -> Unit,
 ) {

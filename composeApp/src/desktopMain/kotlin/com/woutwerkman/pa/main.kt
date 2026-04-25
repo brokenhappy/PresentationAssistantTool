@@ -103,12 +103,15 @@ fun main() = application {
             title = "Connect Device",
             state = rememberWindowState(size = DpSize(450.dp, 500.dp)),
         ) {
+            val pairedPeers by produceState(emptyList<PairedPeer>()) {
+                value = bleService.getPersistedPeers()
+            }
             AppTheme {
                 DesktopConnectionView(
                     bleService = bleService,
                     connectionState = bleConnectionState,
                     connectedPeers = connectedPeers,
-                    pairedPeers = bleService.getPersistedPeers(),
+                    pairedPeers = pairedPeers,
                 )
             }
         }

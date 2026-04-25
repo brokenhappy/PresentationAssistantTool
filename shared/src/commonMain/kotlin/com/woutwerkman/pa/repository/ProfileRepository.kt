@@ -2,7 +2,6 @@ package com.woutwerkman.pa.repository
 
 import com.woutwerkman.pa.model.PresentationProfile
 import com.woutwerkman.pa.model.ProfileData
-import com.woutwerkman.pa.model.RunRecord
 import com.woutwerkman.pa.platform.PlatformFileSystem
 import kotlinx.serialization.json.Json
 
@@ -36,23 +35,6 @@ class ProfileRepository(private val fileSystem: PlatformFileSystem) {
         val profile = loadProfileFromFile(filePath)
         val existing = loadProfileData(profile.title)
         return existing?.copy(profile = profile) ?: ProfileData(profile = profile)
-    }
-
-    suspend fun addRun(data: ProfileData, run: RunRecord): ProfileData {
-        val updated = data.copy(runs = data.runs + run)
-        saveProfileData(updated)
-        return updated
-    }
-
-    suspend fun toggleRunInclusion(data: ProfileData, runId: String): ProfileData {
-        val updated = data.copy(
-            runs = data.runs.map { run ->
-                if (run.id == runId) run.copy(isIncludedInStats = !run.isIncludedInStats)
-                else run
-            }
-        )
-        saveProfileData(updated)
-        return updated
     }
 
     private fun profileStoragePath(title: String): String {

@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 class PresentationEngine(
     private val repository: ProfileRepository,
@@ -193,7 +194,7 @@ class PresentationEngine(
         timerJob?.cancel()
         timerJob = scope.launch {
             while (true) {
-                delay(100)
+                delay(100.milliseconds)
                 val now = currentTimeMs()
                 _state.update {
                     it.copy(

@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.isActive
+import kotlin.time.Duration.Companion.milliseconds
 import org.bytedeco.javacv.FFmpegFrameGrabber
 import org.bytedeco.javacv.Java2DFrameConverter
 import java.awt.image.BufferedImage
@@ -61,7 +62,7 @@ class WebcamQrScanner {
                         }
                     }
                 }
-                delay(100)
+                delay(100.milliseconds)
             }
         } catch (e: CancellationException) {
             throw e

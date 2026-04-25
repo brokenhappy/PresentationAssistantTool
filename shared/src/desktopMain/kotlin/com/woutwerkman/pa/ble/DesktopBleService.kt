@@ -5,6 +5,7 @@ import com.juul.kable.Scanner
 import com.juul.kable.characteristicOf
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
@@ -82,8 +83,8 @@ class DesktopBleService(
         updateConnectionState()
     }
 
-    override fun getPersistedPeers(): List<PairedPeer> {
-        return runBlocking { peerStorage.load() }
+    override suspend fun getPersistedPeers(): List<PairedPeer> {
+        return peerStorage.load()
     }
 
     override suspend fun forgetPeer(id: String) {
@@ -159,13 +160,13 @@ class DesktopBleService(
                 for (peer in peers) {
                     if (peer.id in connectedIds) continue
                     try {
-                        withTimeout(BleConfig.SCAN_DURATION_MS) {
+                        withTimeout(BleConfig.SCAN_DURATION_MS.milliseconds) {
                             connectToDevice(peer.id)
                         }
                     } catch (_: Exception) {}
                     updateConnectionState()
                 }
-                delay(BleConfig.RECONNECT_INTERVAL_MS)
+                delay(BleConfig.RECONNECT_INTERVAL_MS.milliseconds)
             }
         }
     }

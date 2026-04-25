@@ -17,6 +17,7 @@ import com.woutwerkman.pa.ui.expanded.ExpandedView
 import com.woutwerkman.pa.ui.theme.AppTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 enum class MobileScreen {
     Connection,
@@ -45,7 +46,7 @@ fun MobileApp(
     LaunchedEffect(state.isActive) {
         if (state.isActive) {
             while (true) {
-                delay(100)
+                delay(100.milliseconds)
                 val now = currentTimeMs()
                 state = state.copy(
                     elapsedMs = now - presentationStartMs,

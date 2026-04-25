@@ -27,6 +27,6 @@ interface BleService {
     suspend fun sendMessage(message: BleMessage)
 
     suspend fun disconnectPeer(id: String)
-    fun getPersistedPeers(): List<PairedPeer>
+    suspend fun getPersistedPeers(): List<PairedPeer>
     suspend fun forgetPeer(id: String)
 }

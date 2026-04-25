@@ -263,8 +263,8 @@ class AndroidBlePeripheral(
         }
     }
 
-    override fun getPersistedPeers(): List<PairedPeer> {
-        return runBlocking { peerStorage.load() }
+    override suspend fun getPersistedPeers(): List<PairedPeer> {
+        return peerStorage.load()
     }
 
     override suspend fun forgetPeer(id: String) {
