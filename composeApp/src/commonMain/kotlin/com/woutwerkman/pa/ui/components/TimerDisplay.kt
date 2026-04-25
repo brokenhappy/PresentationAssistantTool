@@ -32,9 +32,9 @@ fun DeltaTimerDisplay(
     val sign = if (deltaMs >= 0) "+" else "-"
     val absMs = if (deltaMs < 0) -deltaMs else deltaMs
     val color = if (deltaMs > 0) {
-        Color(0xFFEF9A9A)
+        MaterialTheme.colorScheme.error
     } else {
-        Color(0xFFA5D6A7)
+        MaterialTheme.colorScheme.secondary
     }
     Text(
         text = "$sign${formatTimer(absMs)}",
@@ -49,4 +49,11 @@ fun formatTimer(ms: Long): String {
     val minutes = totalSeconds / 60
     val seconds = totalSeconds % 60
     return "$minutes:${seconds.toString().padStart(2, '0')}"
+}
+
+fun formatTimestamp(epochMs: Long): String {
+    val totalSeconds = epochMs / 1000
+    val hours = (totalSeconds / 3600) % 24
+    val minutes = (totalSeconds / 60) % 60
+    return "${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}"
 }

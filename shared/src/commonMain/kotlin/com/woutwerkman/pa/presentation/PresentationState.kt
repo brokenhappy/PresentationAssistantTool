@@ -3,7 +3,6 @@ package com.woutwerkman.pa.presentation
 import com.woutwerkman.pa.model.PresentationProfile
 import com.woutwerkman.pa.model.RunRecord
 import com.woutwerkman.pa.repository.BulletPointStats
-import com.woutwerkman.pa.repository.ProfileRepository
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 
@@ -30,7 +29,7 @@ data class PresentationState(
         get() = currentBulletIndex >= bulletCount - 1
 
     val stats: BulletPointStats
-        get() = ProfileRepository.computeStats(runs)
+        get() = BulletPointStats.compute(runs)
 
     val averageForCurrentBullet: Long?
         get() {

@@ -3,7 +3,7 @@ package com.woutwerkman.pa
 import com.woutwerkman.pa.model.PresentationProfile
 import com.woutwerkman.pa.model.ProfileData
 import com.woutwerkman.pa.model.RunRecord
-import com.woutwerkman.pa.repository.ProfileRepository
+import com.woutwerkman.pa.repository.BulletPointStats
 import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -68,7 +68,7 @@ class ProfileRepositoryTest {
             RunRecord("4", 400, mapOf("a" to 4000L, "b" to 5000L)),
         )
 
-        val stats = ProfileRepository.computeStats(runs)
+        val stats = BulletPointStats.compute(runs)
 
         assertEquals(2500L, stats.averageDurations["a"])
         assertEquals(3500L, stats.averageDurations["b"])
@@ -87,7 +87,7 @@ class ProfileRepositoryTest {
             RunRecord("3", 300, mapOf("a" to 4000L)),
         )
 
-        val stats = ProfileRepository.computeStats(runs)
+        val stats = BulletPointStats.compute(runs)
 
         assertEquals(3000L, stats.averageDurations["a"])
         assertEquals(4000L, stats.lastRunTotal)
@@ -95,7 +95,7 @@ class ProfileRepositoryTest {
 
     @Test
     fun computeStatsEmpty() {
-        val stats = ProfileRepository.computeStats(emptyList())
+        val stats = BulletPointStats.compute(emptyList())
 
         assertEquals(emptyMap(), stats.averageDurations)
         assertNull(stats.lastRunTotal)

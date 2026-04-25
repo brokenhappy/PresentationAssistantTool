@@ -18,6 +18,7 @@ import com.woutwerkman.pa.presentation.PresentationState
 import com.woutwerkman.pa.repository.BulletPointStats
 import com.woutwerkman.pa.ui.components.TimerDisplay
 import com.woutwerkman.pa.ui.components.formatTimer
+import com.woutwerkman.pa.ui.components.formatTimestamp
 
 @Composable
 fun ExpandedView(
@@ -242,9 +243,3 @@ private fun RunListItem(
     }
 }
 
-private fun formatTimestamp(epochMs: Long): String {
-    val totalSeconds = epochMs / 1000
-    val hours = (totalSeconds / 3600) % 24
-    val minutes = (totalSeconds / 60) % 60
-    return "${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}"
-}

@@ -62,44 +62,4 @@ class ProfileRepository(private val fileSystem: PlatformFileSystem) {
             .toString(16)
         return "${fileSystem.appDataDir}/profiles/$hash.json"
     }
-
-    companion object {
-        fun computeStats(runs: List<RunRecord>): BulletPointStats {
-            val included = runs.filter { it.isIncludedInStats }
-            if (included.isEmpty()) {
-                return BulletPointStats(
-                    averageDurations = emptyMap(),
-                    lastThreeAverageDurations = emptyMap(),
-                    totalAverage = 0,
-                    totalLastThreeAverage = 0,
-                    lastRunTotal = null,
-                )
-            }
-
-            val allKeys = included.flatMap { it.bulletPointDurations.keys }.toSet()
-
-            val averageDurations = allKeys.associateWith { key ->
-                val durations = included.mapNotNull { it.bulletPointDurations[key] }
-                if (durations.isEmpty()) 0L else durations.average().toLong()
-            }
-
-            val lastThree = included.sortedByDescending { it.timestamp }.take(3)
-            val lastThreeAverageDurations = allKeys.associateWith { key ->
-                val durations = lastThree.mapNotNull { it.bulletPointDurations[key] }
-                if (durations.isEmpty()) 0L else durations.average().toLong()
-            }
-
-            val totalAverage = included.map { it.totalDuration }.average().toLong()
-            val totalLastThreeAverage = lastThree.map { it.totalDuration }.average().toLong()
-            val lastRunTotal = included.maxByOrNull { it.timestamp }?.totalDuration
-
-            return BulletPointStats(
-                averageDurations = averageDurations,
-                lastThreeAverageDurations = lastThreeAverageDurations,
-                totalAverage = totalAverage,
-                totalLastThreeAverage = totalLastThreeAverage,
-                lastRunTotal = lastRunTotal,
-            )
-        }
-    }
 }

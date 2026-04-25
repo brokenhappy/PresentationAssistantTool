@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draganddrop.DragAndDropEvent
 import androidx.compose.ui.draganddrop.DragAndDropTarget
 import androidx.compose.ui.draganddrop.awtTransferable
+import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.unit.DpSize
@@ -21,7 +22,6 @@ import com.woutwerkman.pa.platform.GlobalShortcutManager
 import com.woutwerkman.pa.platform.PlatformFileSystem
 import com.woutwerkman.pa.presentation.PresentationEngine
 import com.woutwerkman.pa.presentation.PresentationEvent
-import com.woutwerkman.pa.presentation.PresentationState
 import com.woutwerkman.pa.repository.AppSettings
 import com.woutwerkman.pa.repository.ProfileRepository
 import com.woutwerkman.pa.ui.expanded.ExpandedView
@@ -42,8 +42,8 @@ fun main() = application {
     val peerStorage = remember { PeerStorage(fileSystem) }
     val bleService = remember { DesktopBleService(engineScope, peerStorage) }
     val state by engine.state.collectAsState()
-    val bleConnectionState by bleService.connectionState.collectAsState()
     val connectedPeers by bleService.connectedPeers.collectAsState()
+    val bleConnectionState by bleService.connectionState.collectAsState()
 
     var showMinified by remember { mutableStateOf(true) }
     var showExpanded by remember { mutableStateOf(false) }
@@ -51,63 +51,12 @@ fun main() = application {
 
     val trayIcon = remember { createTrayIcon() }
 
-    // Load last profile on startup
-    LaunchedEffect(Unit) {
-        val settings = appSettings.load()
-        val lastPath = settings.lastProfilePath
-        if (lastPath != null && File(lastPath).exists()) {
-            engine.onEvent(PresentationEvent.LoadProfile(lastPath))
-        }
-    }
-
-    // Persist profile path when it changes
-    LaunchedEffect(engine.profilePath) {
-        appSettings.setLastProfilePath(engine.profilePath)
-    }
-
-    val onEvent: (PresentationEvent) -> Unit = { event ->
-        engine.onEvent(event)
-    }
-
-    // Forward applied events to connected mobile via BLE
-    LaunchedEffect(bleService) {
-        engine.appliedEvents.collect { event ->
-            if (connectedPeers.isNotEmpty()) {
-                when (event) {
-                    is PresentationEvent.LoadProfile,
-                    is PresentationEvent.CloseProfile -> {
-                        bleService.sendMessage(BleMessage.FullSync(engine.state.value.forBleSync()))
-                    }
-                    else -> bleService.sendMessage(BleMessage.Event(event))
-                }
-            }
-        }
-    }
-
-    // Handle incoming BLE events from mobile
-    LaunchedEffect(bleService) {
-        bleService.incomingMessages.collect { message ->
-            when (message) {
-                is BleMessage.Event -> engine.onEvent(message.event)
-                is BleMessage.SyncRequest -> {
-                    bleService.sendMessage(BleMessage.FullSync(state.forBleSync()))
-                }
-                is BleMessage.FullSync -> {}
-            }
-        }
-    }
-
-    // Push full state to mobile when a new device connects
-    LaunchedEffect(connectedPeers) {
-        if (connectedPeers.isNotEmpty()) {
-            bleService.sendMessage(BleMessage.FullSync(state.forBleSync()))
-        }
-    }
-
-    // Auto-reconnect to known peers on startup
-    LaunchedEffect(Unit) {
-        bleService.startAdvertisingOrScanning()
-    }
+    LoadLastProfile(engine, appSettings)
+    PersistProfilePath(engine, appSettings)
+    ForwardEventsToMobile(engine, bleService, connectedPeers)
+    HandleIncomingBleMessages(engine, bleService, state)
+    SyncStateOnConnect(engine, bleService, connectedPeers)
+    AutoReconnect(bleService)
 
     DisposableEffect(engine) {
         val shortcutManager = GlobalShortcutManager {
@@ -117,82 +66,23 @@ fun main() = application {
         onDispose { shortcutManager.unregister() }
     }
 
-    Tray(
-        icon = trayIcon,
-        tooltip = "Presentation Assistant",
-        menu = {
-            if (showMinified) {
-                Item("Hide Presentation", onClick = { showMinified = false })
-            } else {
-                Item("Show Presentation", onClick = { showMinified = true })
-            }
-            Item("Expanded View", onClick = { showExpanded = true })
-            Item("Connect Device", onClick = { showConnection = true })
-            Separator()
-            if (state.profile != null) {
-                Item("Close Profile", onClick = { engine.onEvent(PresentationEvent.CloseProfile) })
-                Separator()
-            }
-            Item("Quit", onClick = ::exitApplication)
-        },
+    AppTray(
+        trayIcon = trayIcon,
+        state = state,
+        showMinified = showMinified,
+        onToggleMinified = { showMinified = !showMinified },
+        onShowExpanded = { showExpanded = true },
+        onShowConnection = { showConnection = true },
+        onCloseProfile = { engine.onEvent(PresentationEvent.CloseProfile) },
     )
 
     if (showMinified) {
-        Window(
-            onCloseRequest = { showMinified = false },
-            title = "Presentation Assistant",
-            alwaysOnTop = true,
-            undecorated = true,
-            transparent = true,
-            state = rememberWindowState(size = DpSize(520.dp, 48.dp)),
-            resizable = true,
-        ) {
-            val dropTarget = remember {
-                object : DragAndDropTarget {
-                    override fun onDrop(event: DragAndDropEvent): Boolean {
-                        val transferable = event.awtTransferable
-                        if (transferable.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
-                            @Suppress("UNCHECKED_CAST")
-                            val files = transferable.getTransferData(DataFlavor.javaFileListFlavor) as List<File>
-                            val jsonFile = files.firstOrNull { it.extension == "json" }
-                            if (jsonFile != null) {
-                                engine.onEvent(PresentationEvent.LoadProfile(jsonFile.absolutePath))
-                                return true
-                            }
-                        }
-                        return false
-                    }
-                }
-            }
-
-            val dropModifier = Modifier.dragAndDropTarget(
-                shouldStartDragAndDrop = { true },
-                target = dropTarget,
-            )
-
-            WindowDraggableArea {
-                AppTheme {
-                    ContextMenuArea(
-                        items = {
-                            buildList {
-                                if (state.isActive) {
-                                    add(ContextMenuItem("Advance") { engine.onEvent(PresentationEvent.Advance) })
-                                    add(ContextMenuItem("Go Back") { engine.onEvent(PresentationEvent.GoBack) })
-                                }
-                            }
-                        }
-                    ) {
-                        MinifiedView(
-                            state = state,
-                            onEvent = onEvent,
-                            onExpand = { showExpanded = true },
-                            onHide = { showMinified = false },
-                            modifier = dropModifier,
-                        )
-                    }
-                }
-            }
-        }
+        MinifiedWindow(
+            state = state,
+            engine = engine,
+            onHide = { showMinified = false },
+            onExpand = { showExpanded = true },
+        )
     }
 
     if (showExpanded) {
@@ -202,10 +92,7 @@ fun main() = application {
             state = rememberWindowState(size = DpSize(500.dp, 650.dp)),
         ) {
             AppTheme {
-                ExpandedView(
-                    state = state,
-                    onEvent = onEvent,
-                )
+                ExpandedView(state = state, onEvent = engine::onEvent)
             }
         }
     }
@@ -228,6 +115,178 @@ fun main() = application {
     }
 }
 
+@Composable
+private fun LoadLastProfile(engine: PresentationEngine, appSettings: AppSettings) {
+    LaunchedEffect(Unit) {
+        val lastPath = appSettings.load().lastProfilePath
+        if (lastPath != null && File(lastPath).exists()) {
+            engine.onEvent(PresentationEvent.LoadProfile(lastPath))
+        }
+    }
+}
+
+@Composable
+private fun PersistProfilePath(engine: PresentationEngine, appSettings: AppSettings) {
+    LaunchedEffect(engine.profilePath) {
+        appSettings.setLastProfilePath(engine.profilePath)
+    }
+}
+
+@Composable
+private fun ForwardEventsToMobile(
+    engine: PresentationEngine,
+    bleService: DesktopBleService,
+    connectedPeers: List<PairedPeer>,
+) {
+    val currentPeers by rememberUpdatedState(connectedPeers)
+    LaunchedEffect(bleService) {
+        engine.appliedEvents.collect { event ->
+            if (currentPeers.isNotEmpty()) {
+                when (event) {
+                    is PresentationEvent.LoadProfile,
+                    is PresentationEvent.CloseProfile ->
+                        bleService.sendMessage(BleMessage.FullSync(engine.state.value.forBleSync()))
+                    else -> bleService.sendMessage(BleMessage.Event(event))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HandleIncomingBleMessages(
+    engine: PresentationEngine,
+    bleService: DesktopBleService,
+    state: com.woutwerkman.pa.presentation.PresentationState,
+) {
+    val currentState by rememberUpdatedState(state)
+    LaunchedEffect(bleService) {
+        bleService.incomingMessages.collect { message ->
+            when (message) {
+                is BleMessage.Event -> engine.onEvent(message.event)
+                is BleMessage.SyncRequest ->
+                    bleService.sendMessage(BleMessage.FullSync(currentState.forBleSync()))
+                is BleMessage.FullSync -> {}
+            }
+        }
+    }
+}
+
+@Composable
+private fun SyncStateOnConnect(
+    engine: PresentationEngine,
+    bleService: DesktopBleService,
+    connectedPeers: List<PairedPeer>,
+) {
+    LaunchedEffect(connectedPeers) {
+        if (connectedPeers.isNotEmpty()) {
+            bleService.sendMessage(BleMessage.FullSync(engine.state.value.forBleSync()))
+        }
+    }
+}
+
+@Composable
+private fun AutoReconnect(bleService: DesktopBleService) {
+    LaunchedEffect(Unit) {
+        bleService.startAdvertisingOrScanning()
+    }
+}
+
+@Composable
+private fun ApplicationScope.AppTray(
+    trayIcon: Painter,
+    state: com.woutwerkman.pa.presentation.PresentationState,
+    showMinified: Boolean,
+    onToggleMinified: () -> Unit,
+    onShowExpanded: () -> Unit,
+    onShowConnection: () -> Unit,
+    onCloseProfile: () -> Unit,
+) {
+    Tray(
+        icon = trayIcon,
+        tooltip = "Presentation Assistant",
+        menu = {
+            Item(
+                if (showMinified) "Hide Presentation" else "Show Presentation",
+                onClick = onToggleMinified,
+            )
+            Item("Expanded View", onClick = onShowExpanded)
+            Item("Connect Device", onClick = onShowConnection)
+            Separator()
+            if (state.profile != null) {
+                Item("Close Profile", onClick = onCloseProfile)
+                Separator()
+            }
+            Item("Quit", onClick = ::exitApplication)
+        },
+    )
+}
+
+@OptIn(ExperimentalComposeUiApi::class, ExperimentalFoundationApi::class)
+@Composable
+private fun MinifiedWindow(
+    state: com.woutwerkman.pa.presentation.PresentationState,
+    engine: PresentationEngine,
+    onHide: () -> Unit,
+    onExpand: () -> Unit,
+) {
+    Window(
+        onCloseRequest = onHide,
+        title = "Presentation Assistant",
+        alwaysOnTop = true,
+        undecorated = true,
+        transparent = true,
+        state = rememberWindowState(size = DpSize(520.dp, 48.dp)),
+        resizable = true,
+    ) {
+        val dropTarget = remember {
+            object : DragAndDropTarget {
+                override fun onDrop(event: DragAndDropEvent): Boolean {
+                    val transferable = event.awtTransferable
+                    if (transferable.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
+                        @Suppress("UNCHECKED_CAST")
+                        val files = transferable.getTransferData(DataFlavor.javaFileListFlavor) as List<File>
+                        val jsonFile = files.firstOrNull { it.extension == "json" }
+                        if (jsonFile != null) {
+                            engine.onEvent(PresentationEvent.LoadProfile(jsonFile.absolutePath))
+                            return true
+                        }
+                    }
+                    return false
+                }
+            }
+        }
+
+        val dropModifier = Modifier.dragAndDropTarget(
+            shouldStartDragAndDrop = { true },
+            target = dropTarget,
+        )
+
+        WindowDraggableArea {
+            AppTheme {
+                ContextMenuArea(
+                    items = {
+                        buildList {
+                            if (state.isActive) {
+                                add(ContextMenuItem("Advance") { engine.onEvent(PresentationEvent.Advance) })
+                                add(ContextMenuItem("Go Back") { engine.onEvent(PresentationEvent.GoBack) })
+                            }
+                        }
+                    }
+                ) {
+                    MinifiedView(
+                        state = state,
+                        onEvent = engine::onEvent,
+                        onExpand = onExpand,
+                        onHide = onHide,
+                        modifier = dropModifier,
+                    )
+                }
+            }
+        }
+    }
+}
+
 private fun createTrayIcon(): Painter {
     val size = 22
     val image = BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB)
@@ -242,7 +301,5 @@ private fun createTrayIcon(): Painter {
     val y = (size - fm.height) / 2 + fm.ascent
     g.drawString(text, x, y)
     g.dispose()
-    return androidx.compose.ui.graphics.painter.BitmapPainter(
-        image.toComposeImageBitmap()
-    )
+    return BitmapPainter(image.toComposeImageBitmap())
 }

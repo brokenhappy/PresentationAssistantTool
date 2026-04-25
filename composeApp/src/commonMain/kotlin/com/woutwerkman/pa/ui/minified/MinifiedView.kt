@@ -6,7 +6,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.woutwerkman.pa.presentation.PresentationEvent
@@ -72,10 +71,10 @@ private fun IdleState(
             Box(
                 modifier = Modifier
                     .size(32.dp)
-                    .background(Color(0xFF4CAF50), shape = MaterialTheme.shapes.small),
+                    .background(MaterialTheme.colorScheme.secondary, shape = MaterialTheme.shapes.small),
                 contentAlignment = Alignment.Center,
             ) {
-                Text("▶", color = Color.White, style = MaterialTheme.typography.bodySmall)
+                Text("▶", color = MaterialTheme.colorScheme.onSecondary, style = MaterialTheme.typography.bodySmall)
             }
         }
         IconButton(onClick = onExpand) {
