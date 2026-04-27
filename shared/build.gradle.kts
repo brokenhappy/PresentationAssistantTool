@@ -34,6 +34,7 @@ kotlin {
                 implementation(libs.zxing.core)
                 implementation(libs.zxing.javase)
                 implementation(libs.slf4j.simple)
+                implementation(libs.hid4java)
             }
         }
     }

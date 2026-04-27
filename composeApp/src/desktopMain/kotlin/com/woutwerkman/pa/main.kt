@@ -20,6 +20,7 @@ import androidx.compose.ui.window.*
 import com.woutwerkman.pa.ble.*
 import com.woutwerkman.pa.platform.GlobalShortcutManager
 import com.woutwerkman.pa.platform.PlatformFileSystem
+import com.woutwerkman.pa.platform.SpotlightManager
 import com.woutwerkman.pa.presentation.PresentationEngine
 import com.woutwerkman.pa.presentation.PresentationEvent
 import com.woutwerkman.pa.repository.AppSettings
@@ -45,6 +46,8 @@ fun main() = application {
     val connectedPeers by bleService.connectedPeers.collectAsState()
     val bleConnectionState by bleService.connectionState.collectAsState()
     val bleError by bleService.error.collectAsState()
+    val spotlightManager = remember { SpotlightManager(engineScope, engine::onEvent) }
+    val spotlightConnected by spotlightManager.connected.collectAsState()
 
     var showMinified by remember { mutableStateOf(true) }
     var showExpanded by remember { mutableStateOf(false) }
@@ -67,10 +70,16 @@ fun main() = application {
         onDispose { shortcutManager.unregister() }
     }
 
+    DisposableEffect(spotlightManager) {
+        spotlightManager.start()
+        onDispose { spotlightManager.stop() }
+    }
+
     AppTray(
         trayIcon = trayIcon,
         state = state,
         showMinified = showMinified,
+        spotlightConnected = spotlightConnected,
         onToggleMinified = { showMinified = !showMinified },
         onShowExpanded = { showExpanded = true },
         onShowConnection = { showConnection = true },
@@ -202,6 +211,7 @@ private fun ApplicationScope.AppTray(
     trayIcon: Painter,
     state: com.woutwerkman.pa.presentation.PresentationState,
     showMinified: Boolean,
+    spotlightConnected: Boolean,
     onToggleMinified: () -> Unit,
     onShowExpanded: () -> Unit,
     onShowConnection: () -> Unit,
@@ -217,6 +227,12 @@ private fun ApplicationScope.AppTray(
             )
             Item("Expanded View", onClick = onShowExpanded)
             Item("Connect Device", onClick = onShowConnection)
+            Separator()
+            Item(
+                "Spotlight: ${if (spotlightConnected) "Connected" else "Not Found"}",
+                enabled = false,
+                onClick = {},
+            )
             Separator()
             if (state.profile != null) {
                 Item("Close Profile", onClick = onCloseProfile)
