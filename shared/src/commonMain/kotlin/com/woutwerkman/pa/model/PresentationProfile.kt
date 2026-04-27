@@ -5,7 +5,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class PresentationProfile(
     val title: String,
-    val bulletPoints: LinkedHashMap<String, String>,
+    val bulletPoints: Map<String, String>,
 ) {
     val orderedKeys: List<String> get() = bulletPoints.keys.toList()
     val size: Int get() = bulletPoints.size

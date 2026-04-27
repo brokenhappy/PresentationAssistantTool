@@ -1,10 +1,12 @@
 package com.woutwerkman.pa.ble
 
+import com.juul.kable.Identifier
 import com.juul.kable.Peripheral
 import com.juul.kable.Scanner
 import com.juul.kable.characteristicOf
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
+import kotlin.coroutines.coroutineContext
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
@@ -121,16 +123,20 @@ class DesktopBleService(
     private suspend fun connectToDevice(targetDeviceId: String) {
         if (synchronized(peripherals) { peripherals.containsKey(targetDeviceId) }) return
 
-        val scanner = Scanner {
-            filters {
-                match {
-                    services = listOf(serviceUuid)
+        val triedIdentifiers = mutableSetOf<Identifier>()
+
+        while (coroutineContext.isActive) {
+            val scanner = Scanner {
+                filters {
+                    match { services = listOf(serviceUuid) }
                 }
             }
-        }
 
-        var found = false
-        scanner.advertisements.takeWhile { !found }.collect { advertisement ->
+            val advertisement = scanner.advertisements.first { adv ->
+                adv.identifier !in triedIdentifiers
+            }
+
+            triedIdentifiers.add(advertisement.identifier)
             _connectionState.value = BleConnectionState.Connecting
             val p = Peripheral(advertisement)
 
@@ -143,7 +149,6 @@ class DesktopBleService(
                 val deviceId = deviceIdBytes.decodeToString()
 
                 if (deviceId == targetDeviceId) {
-                    found = true
                     _error.value = null
                     val peer = PairedPeer(id = deviceId, name = advertisement.name ?: "Unknown Device")
                     synchronized(peripherals) {
@@ -152,9 +157,9 @@ class DesktopBleService(
                     }
                     assemblers[deviceId] = MessageAssembler()
                     updateConnectionState()
-
                     peerStorage.addPeer(peer)
                     observeMessages(deviceId, p)
+                    return
                 } else {
                     try { p.disconnect() } catch (_: Exception) {}
                 }

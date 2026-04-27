@@ -35,7 +35,7 @@ private const val CHUNK_COMPLETE: Byte = 0x00
 private const val CHUNK_START: Byte = 0x01
 private const val CHUNK_CONTINUE: Byte = 0x02
 private const val CHUNK_END: Byte = 0x03
-private const val MAX_CHUNK_PAYLOAD = 499
+private const val MAX_CHUNK_PAYLOAD = 180
 
 fun BleMessage.encodeChunked(): List<ByteArray> {
     val data = encode()

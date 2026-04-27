@@ -71,6 +71,12 @@ compose.desktop {
             packageVersion = "1.0.0"
             macOS {
                 bundleID = "com.woutwerkman.pa"
+                infoPlist {
+                    extraKeysRawXml = """
+                        <key>NSBluetoothAlwaysUsageDescription</key>
+                        <string>PresentationAssistant needs Bluetooth to connect to your phone as a remote control.</string>
+                    """.trimIndent()
+                }
             }
         }
     }

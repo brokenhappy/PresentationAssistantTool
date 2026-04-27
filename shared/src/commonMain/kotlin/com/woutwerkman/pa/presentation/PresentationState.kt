@@ -4,7 +4,6 @@ import com.woutwerkman.pa.model.PresentationProfile
 import com.woutwerkman.pa.model.RunRecord
 import com.woutwerkman.pa.repository.BulletPointStats
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.Transient
 
 @Serializable
 data class PresentationState(
@@ -16,8 +15,8 @@ data class PresentationState(
     val currentBulletElapsedMs: Long = 0,
     val currentRunDurations: Map<String, Long> = emptyMap(),
 ) {
-    @Transient
-    val bulletCount: Int = profile?.size ?: 0
+    val bulletCount: Int
+        get() = profile?.size ?: 0
 
     val currentBulletText: String?
         get() = profile?.textAt(currentBulletIndex)

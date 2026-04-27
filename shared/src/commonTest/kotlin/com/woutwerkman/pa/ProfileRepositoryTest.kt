@@ -40,7 +40,7 @@ class ProfileRepositoryTest {
     fun roundTripProfileData() {
         val profile = PresentationProfile(
             title = "Test Talk",
-            bulletPoints = linkedMapOf(
+            bulletPoints = mapOf(
                 "a" to "First point",
                 "b" to "Second point",
             ),

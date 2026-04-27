@@ -1,10 +1,10 @@
 package com.woutwerkman.pa.ble
 
 object BleConfig {
-    const val SERVICE_UUID = "0000a001-0000-1000-8000-00805f9b34fb"
-    const val COMMAND_CHAR_UUID = "0000a002-0000-1000-8000-00805f9b34fb"
-    const val STATE_CHAR_UUID = "0000a003-0000-1000-8000-00805f9b34fb"
-    const val DEVICE_ID_CHAR_UUID = "0000a004-0000-1000-8000-00805f9b34fb"
+    const val SERVICE_UUID = "7b3d4a1c-8e6f-4f0a-9c2d-1a3b5c7d9e0f"
+    const val COMMAND_CHAR_UUID = "7b3d4a1c-8e6f-4f0a-9c2d-1a3b5c7d9e10"
+    const val STATE_CHAR_UUID = "7b3d4a1c-8e6f-4f0a-9c2d-1a3b5c7d9e11"
+    const val DEVICE_ID_CHAR_UUID = "7b3d4a1c-8e6f-4f0a-9c2d-1a3b5c7d9e12"
 
     const val RECONNECT_INTERVAL_MS = 30_000L
     const val SCAN_DURATION_MS = 10_000L
