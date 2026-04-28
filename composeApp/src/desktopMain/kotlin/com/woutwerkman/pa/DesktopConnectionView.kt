@@ -23,6 +23,7 @@ fun DesktopConnectionView(
     connectionState: BleConnectionState,
     connectedPeers: List<PairedPeer>,
     pairedPeers: List<PairedPeer>,
+    spotlightConnected: Boolean,
     bleError: BleError? = null,
 ) {
     var isScanning by remember { mutableStateOf(false) }
@@ -42,50 +43,45 @@ fun DesktopConnectionView(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
-            text = "Device Connection",
+            text = "Devices",
             style = MaterialTheme.typography.headlineSmall,
         )
 
         Spacer(Modifier.height(16.dp))
 
-        if (connectedPeers.isNotEmpty()) {
-            for (peer in connectedPeers) {
-                Surface(
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    shape = MaterialTheme.shapes.medium,
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
-                ) {
-                    Row(
-                        modifier = Modifier.padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            "Connected: ${peer.name}",
-                            style = MaterialTheme.typography.titleMedium,
-                            modifier = Modifier.weight(1f),
-                        )
-                        TextButton(onClick = {
-                            scope.launch { bleService.disconnectPeer(peer.id) }
-                        }) {
-                            Text("Disconnect")
-                        }
-                    }
-                }
-            }
-            Spacer(Modifier.height(16.dp))
+        // --- Connected devices ---
+        DeviceCard(
+            name = "Logitech Spotlight",
+            connected = spotlightConnected,
+            statusText = if (spotlightConnected) "Connected" else "Not found (auto-detected)",
+        )
+
+        for (peer in connectedPeers) {
+            DeviceCard(
+                name = peer.name,
+                connected = true,
+                statusText = "Connected",
+                onAction = {
+                    scope.launch { bleService.disconnectPeer(peer.id) }
+                },
+                actionText = "Disconnect",
+            )
         }
 
         if (connectionState == BleConnectionState.Scanning || connectionState == BleConnectionState.Connecting) {
-            CircularProgressIndicator()
             Spacer(Modifier.height(12.dp))
-            Text(
-                if (connectionState == BleConnectionState.Scanning) "Scanning for device..." else "Connecting...",
-                style = MaterialTheme.typography.bodyMedium,
-            )
-            Spacer(Modifier.height(16.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                Spacer(Modifier.width(12.dp))
+                Text(
+                    if (connectionState == BleConnectionState.Scanning) "Scanning for device..." else "Connecting...",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
         }
 
         if (bleError != null) {
+            Spacer(Modifier.height(12.dp))
             DesktopBleErrorCard(bleError, onRetry = {
                 when (bleError) {
                     is BleError.ScanTimeout -> bleService.scanForDeviceId(bleError.targetDeviceId)
@@ -93,9 +89,21 @@ fun DesktopConnectionView(
                     else -> {}
                 }
             })
-            Spacer(Modifier.height(16.dp))
         }
 
+        Spacer(Modifier.height(20.dp))
+        HorizontalDivider()
+        Spacer(Modifier.height(16.dp))
+
+        Text(
+            "Pair Phone",
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+
+        Spacer(Modifier.height(12.dp))
+
+        // --- Phone pairing ---
         if (isScanning) {
             Text(scanStatus, style = MaterialTheme.typography.bodyMedium)
             Spacer(Modifier.height(12.dp))
@@ -146,9 +154,7 @@ fun DesktopConnectionView(
                 Text("Scan QR Code from Phone")
             }
 
-            Spacer(Modifier.height(16.dp))
-            HorizontalDivider()
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(12.dp))
 
             Text(
                 "Or enter device ID manually",
@@ -182,11 +188,14 @@ fun DesktopConnectionView(
             }
         }
 
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(20.dp))
 
         if (peers.isNotEmpty()) {
+            HorizontalDivider()
+            Spacer(Modifier.height(12.dp))
+
             Text(
-                "Paired Devices",
+                "Paired Phones",
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -195,29 +204,57 @@ fun DesktopConnectionView(
             val connectedIds = connectedPeers.map { it.id }.toSet()
             for (peer in peers) {
                 if (peer.id in connectedIds) continue
-                Surface(
-                    color = MaterialTheme.colorScheme.surfaceVariant,
-                    shape = MaterialTheme.shapes.small,
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
-                ) {
-                    Row(
-                        modifier = Modifier.padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            peer.name,
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.weight(1f),
-                        )
-                        TextButton(onClick = {
-                            scope.launch {
-                                bleService.forgetPeer(peer.id)
-                                peers = bleService.getPersistedPeers()
-                            }
-                        }) {
-                            Text("Forget", style = MaterialTheme.typography.bodySmall)
+                DeviceCard(
+                    name = peer.name,
+                    connected = false,
+                    statusText = "Disconnected",
+                    onAction = {
+                        scope.launch {
+                            bleService.forgetPeer(peer.id)
+                            peers = bleService.getPersistedPeers()
                         }
-                    }
+                    },
+                    actionText = "Forget",
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun DeviceCard(
+    name: String,
+    connected: Boolean,
+    statusText: String,
+    onAction: (() -> Unit)? = null,
+    actionText: String? = null,
+) {
+    Surface(
+        color = if (connected)
+            MaterialTheme.colorScheme.primaryContainer
+        else
+            MaterialTheme.colorScheme.surfaceVariant,
+        shape = MaterialTheme.shapes.medium,
+        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(name, style = MaterialTheme.typography.titleMedium)
+                Text(
+                    statusText,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (connected)
+                        MaterialTheme.colorScheme.onPrimaryContainer
+                    else
+                        MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            if (onAction != null && actionText != null) {
+                TextButton(onClick = onAction) {
+                    Text(actionText)
                 }
             }
         }

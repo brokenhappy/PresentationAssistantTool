@@ -88,10 +88,11 @@ fun main() {
             trayIcon = trayIcon,
             state = state,
             showMinified = showMinified,
+            connectedPeers = connectedPeers,
             spotlightConnected = spotlightConnected,
             onToggleMinified = { showMinified = !showMinified },
             onShowExpanded = { showExpanded = true },
-            onShowConnection = { showConnection = true },
+            onShowDevices = { showConnection = true },
             onCloseProfile = { engine.onEvent(PresentationEvent.CloseProfile) },
         )
 
@@ -119,8 +120,8 @@ fun main() {
         if (showConnection) {
             Window(
                 onCloseRequest = { showConnection = false },
-                title = "Connect Device",
-                state = rememberWindowState(size = DpSize(450.dp, 500.dp)),
+                title = "Devices",
+                state = rememberWindowState(size = DpSize(450.dp, 550.dp)),
             ) {
                 val pairedPeers by produceState(emptyList<PairedPeer>()) {
                     value = bleService.getPersistedPeers()
@@ -131,6 +132,7 @@ fun main() {
                         connectionState = bleConnectionState,
                         connectedPeers = connectedPeers,
                         pairedPeers = pairedPeers,
+                        spotlightConnected = spotlightConnected,
                         bleError = bleError,
                     )
                 }
@@ -239,10 +241,11 @@ private fun ApplicationScope.AppTray(
     trayIcon: Painter,
     state: PresentationState,
     showMinified: Boolean,
+    connectedPeers: List<PairedPeer>,
     spotlightConnected: Boolean,
     onToggleMinified: () -> Unit,
     onShowExpanded: () -> Unit,
-    onShowConnection: () -> Unit,
+    onShowDevices: () -> Unit,
     onCloseProfile: () -> Unit,
 ) {
     Tray(
@@ -254,13 +257,23 @@ private fun ApplicationScope.AppTray(
                 onClick = onToggleMinified,
             )
             Item("Expanded View", onClick = onShowExpanded)
-            Item("Connect Device", onClick = onShowConnection)
+            Item("Devices...", onClick = onShowDevices)
             Separator()
             Item(
                 "Spotlight: ${if (spotlightConnected) "Connected" else "Not Found"}",
                 enabled = false,
                 onClick = {},
             )
+            for (peer in connectedPeers) {
+                Item(
+                    "${peer.name}: Connected",
+                    enabled = false,
+                    onClick = {},
+                )
+            }
+            if (!spotlightConnected && connectedPeers.isEmpty()) {
+                Item("No devices connected", enabled = false, onClick = {})
+            }
             Separator()
             if (state.profile != null) {
                 Item("Close Profile", onClick = onCloseProfile)
