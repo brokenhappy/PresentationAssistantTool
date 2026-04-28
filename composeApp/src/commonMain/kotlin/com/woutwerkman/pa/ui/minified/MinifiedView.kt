@@ -36,12 +36,12 @@ fun MinifiedView(
 @Composable
 private fun EmptyState() {
     Box(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
+        modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 4.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = "Drop a .json presentation file here",
-            style = MaterialTheme.typography.bodyLarge,
+            style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
