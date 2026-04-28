@@ -67,6 +67,8 @@ class DesktopBleService(
         for ((deviceId, p) in snapshot) {
             try {
                 for (chunk in chunks) {
+                    // WithResponse is required: iOS stateChar has properties Write+Read (0x0A).
+                    // Kable's default WithoutResponse checks for property bit 0x04, which isn't set, causing silent failure.
                     p.write(stateChar, chunk, WriteType.WithResponse)
                 }
             } catch (_: Exception) {
@@ -126,6 +128,9 @@ class DesktopBleService(
     private suspend fun connectToAnyDevice(targetDeviceIds: Set<String>) {
         if (synchronized(peripherals) { targetDeviceIds.all { it in peripherals } }) return
 
+        // Only skip identifiers confirmed to be the wrong device (different device ID).
+        // Do NOT skip on connection failure — the correct device may just not be ready yet.
+        // Skipping on failure causes the scanner to block waiting for a different device that never comes.
         val wrongDeviceIdentifiers = mutableSetOf<Identifier>()
 
         while (coroutineContext.isActive) {
@@ -199,6 +204,8 @@ class DesktopBleService(
         observeJobs[deviceId]?.cancel()
         lastHeartbeat[deviceId] = System.currentTimeMillis()
         observeJobs[deviceId] = scope.launch {
+            // Kable's observe() Flow stays active across disconnections by design,
+            // so we need these separate monitors to detect disconnection.
             launch {
                 p.state.first { it is State.Disconnected }
                 handleDisconnect(deviceId)
@@ -242,6 +249,7 @@ class DesktopBleService(
         observeJobs.remove(deviceId)?.cancel()
         assemblers.remove(deviceId)
         lastHeartbeat.remove(deviceId)
+        // Explicitly disconnect so macOS releases the BLE connection slot immediately.
         if (oldPeripheral != null) {
             scope.launch { try { oldPeripheral.disconnect() } catch (_: Exception) {} }
         }

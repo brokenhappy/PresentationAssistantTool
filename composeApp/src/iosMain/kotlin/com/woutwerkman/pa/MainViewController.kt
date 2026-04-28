@@ -38,6 +38,7 @@ fun MainViewController() = ComposeUIViewController {
     )
 }
 
+// Must persist across app restarts — desktop reconnects by matching this ID against stored peers.
 private fun getOrCreateDeviceId(): String {
     val defaults = NSUserDefaults.standardUserDefaults
     val key = "pa_device_id"

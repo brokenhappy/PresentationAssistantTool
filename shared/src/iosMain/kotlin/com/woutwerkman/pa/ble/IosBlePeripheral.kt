@@ -156,6 +156,8 @@ class IosBlePeripheral(
             for (request in didReceiveWriteRequests) {
                 val req = request as? CBATTRequest ?: continue
 
+                // didSubscribeToCharacteristic isn't reliably called on reconnection,
+                // so we also detect the central from incoming write requests.
                 if (connectedCentral == null) {
                     markConnected(req.central)
                 }

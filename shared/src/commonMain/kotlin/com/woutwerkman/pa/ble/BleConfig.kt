@@ -8,6 +8,8 @@ object BleConfig {
 
     const val RECONNECT_INTERVAL_MS = 5_000L
     const val SCAN_DURATION_MS = 10_000L
+    // Mobile sends heartbeat notifications so desktop detects disconnection faster than
+    // the BLE supervision timeout (which can be 30s+). Timeout must be > 2× interval.
     const val HEARTBEAT_INTERVAL_MS = 500L
     const val HEARTBEAT_TIMEOUT_MS = 2_000L
 }
