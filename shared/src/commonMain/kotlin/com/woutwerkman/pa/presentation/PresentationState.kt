@@ -27,6 +27,9 @@ data class PresentationState(
     val isLastBullet: Boolean
         get() = currentBulletIndex >= bulletCount - 1
 
+    val currentBulletAttachment: String?
+        get() = profile?.attachmentAt(currentBulletIndex)
+
     val stats: BulletPointStats
         get() = BulletPointStats.compute(runs)
 

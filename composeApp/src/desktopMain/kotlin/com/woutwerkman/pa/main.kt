@@ -117,6 +117,11 @@ fun main() {
             }
         }
 
+        val currentAttachment = state.currentBulletAttachment
+        if (state.isActive && currentAttachment != null) {
+            AttachmentWindow(attachment = currentAttachment)
+        }
+
         if (showConnection) {
             Window(
                 onCloseRequest = { showConnection = false },

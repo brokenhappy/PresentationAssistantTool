@@ -15,5 +15,9 @@
         "ecosystem": "The KMP ecosystem: libraries, tools, community",
         "summary": "Key takeaways and next steps",
         "qa": "Q&A"
+    },
+    "attachments": {
+        "demo-setup": "https://kotlinlang.org/docs/multiplatform.html",
+        "ecosystem": "https://github.com/ApolloApollo5/awesome-kotlin-multiplatform"
     }
 }
