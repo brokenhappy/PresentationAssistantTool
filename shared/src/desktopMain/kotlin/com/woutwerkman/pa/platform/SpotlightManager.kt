@@ -23,6 +23,7 @@ class SpotlightManager(
     private var activeFeatIdx: Byte = 0
     private var pollJob: Job? = null
     private var readJob: Job? = null
+    private var nativeMonitor: NativeHidMonitor? = null
 
     fun start() {
         if (pollJob != null) return
@@ -35,7 +36,7 @@ class SpotlightManager(
         }
         pollJob = scope.launch(Dispatchers.IO) {
             while (isActive) {
-                if (device == null) tryConnect()
+                if (device == null && nativeMonitor == null) tryConnect()
                 delay(5000)
             }
         }
@@ -46,6 +47,8 @@ class SpotlightManager(
         readJob = null
         pollJob?.cancel()
         pollJob = null
+        nativeMonitor?.stop()
+        nativeMonitor = null
         device?.let { dev ->
             try { undivertButtons(dev) } catch (_: Exception) {}
             try { dev.close() } catch (_: Exception) {}
@@ -57,7 +60,12 @@ class SpotlightManager(
     }
 
     private fun tryConnect() {
-        val services = hidServices ?: return
+        if (tryHidppConnect()) return
+        if (nativeMonitor == null) tryNativeConnect()
+    }
+
+    private fun tryHidppConnect(): Boolean {
+        val services = hidServices ?: return false
         val candidates = services.attachedHidDevices.filter { dev ->
             dev.vendorId.unsigned() == LOGITECH_VENDOR &&
                 dev.productId.unsigned() in SPOTLIGHT_PRODUCTS &&
@@ -69,6 +77,8 @@ class SpotlightManager(
                 val devIdx = if (candidate.productId.unsigned() == USB_PRODUCT) DEV_WIRELESS else DEV_CORDED
                 val featIdx = findReprogControls(candidate, devIdx)
                 if (featIdx != null) {
+                    nativeMonitor?.stop()
+                    nativeMonitor = null
                     divertButton(candidate, devIdx, featIdx, CID_NEXT)
                     divertButton(candidate, devIdx, featIdx, CID_BACK)
                     device = candidate
@@ -76,12 +86,32 @@ class SpotlightManager(
                     activeFeatIdx = featIdx
                     _connected.value = true
                     startReadLoop(candidate, featIdx)
-                    return
+                    return true
                 }
                 candidate.close()
             } catch (_: Exception) {
                 try { candidate.close() } catch (_: Exception) {}
             }
+        }
+        return false
+    }
+
+    private fun tryNativeConnect() {
+        val monitor = NativeHidMonitor(
+            vendorId = LOGITECH_VENDOR,
+            productId = BT_PRODUCT,
+            onConnected = { connected -> _connected.value = connected },
+            onInput = { usagePage, usage, value ->
+                if (usagePage == KEYBOARD_PAGE && value == 1L) {
+                    when (usage) {
+                        KEY_RIGHT, KEY_PAGE_DOWN -> onEvent(PresentationEvent.Advance)
+                        KEY_LEFT, KEY_PAGE_UP -> onEvent(PresentationEvent.GoBack)
+                    }
+                }
+            },
+        )
+        if (monitor.start()) {
+            nativeMonitor = monitor
         }
     }
 
@@ -196,7 +226,14 @@ class SpotlightManager(
         private const val LOGITECH_VENDOR = 0x046d
         private val SPOTLIGHT_PRODUCTS = setOf(0xc53e, 0xb503)
         private const val USB_PRODUCT = 0xc53e
+        private const val BT_PRODUCT = 0xb503
         private const val VENDOR_PAGE_MIN = 0xFF00
+
+        private const val KEYBOARD_PAGE = 0x07
+        private const val KEY_RIGHT = 0x4F
+        private const val KEY_LEFT = 0x50
+        private const val KEY_PAGE_DOWN = 0x4E
+        private const val KEY_PAGE_UP = 0x4B
 
         private const val REPORT_SHORT: Byte = 0x10
         private const val REPORT_LONG: Byte = 0x11

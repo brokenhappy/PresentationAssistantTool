@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.*
 import com.woutwerkman.pa.ble.*
 import com.woutwerkman.pa.platform.GlobalShortcutManager
+import com.woutwerkman.pa.platform.InputMonitoringPermission
 import com.woutwerkman.pa.platform.PlatformFileSystem
 import com.woutwerkman.pa.platform.SpotlightManager
 import com.woutwerkman.pa.presentation.PresentationEngine
@@ -34,7 +35,9 @@ import java.awt.image.BufferedImage
 import java.io.File
 
 @OptIn(ExperimentalComposeUiApi::class, ExperimentalFoundationApi::class)
-fun main() = application {
+fun main() {
+    InputMonitoringPermission.request()
+    application {
     val engineScope = remember { CoroutineScope(SupervisorJob() + Dispatchers.Default) }
     val fileSystem = remember { PlatformFileSystem(System.getProperty("user.home") + "/.presentationassistant") }
     val repository = remember { ProfileRepository(fileSystem) }
@@ -126,6 +129,7 @@ fun main() = application {
                 )
             }
         }
+    }
     }
 }
 
