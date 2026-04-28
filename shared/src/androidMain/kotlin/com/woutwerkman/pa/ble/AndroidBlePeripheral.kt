@@ -46,6 +46,7 @@ class AndroidBlePeripheral(
 
     private val assembler = MessageAssembler()
     private var preparedWriteBuffer = ByteArray(0)
+    private var heartbeatJob: Job? = null
 
     private val bluetoothStateReceiver = object : BroadcastReceiver() {
         override fun onReceive(ctx: Context, intent: Intent) {
@@ -70,8 +71,10 @@ class AndroidBlePeripheral(
                     val peer = PairedPeer(id = device.address, name = device.name ?: "Desktop")
                     _connectedPeers.value = listOf(peer)
                     scope.launch { peerStorage.addPeer(peer) }
+                    startHeartbeat()
                 }
                 BluetoothProfile.STATE_DISCONNECTED -> {
+                    heartbeatJob?.cancel()
                     connectedDevice = null
                     _connectionState.value = BleConnectionState.Disconnected
                     _connectedPeers.value = emptyList()
@@ -267,6 +270,7 @@ class AndroidBlePeripheral(
     }
 
     override suspend fun stopAdvertisingOrScanning() {
+        heartbeatJob?.cancel()
         try { context.unregisterReceiver(bluetoothStateReceiver) } catch (_: Exception) {}
 
         val manager = context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
@@ -278,6 +282,27 @@ class AndroidBlePeripheral(
         advertiseCallback = null
         gattServer?.close()
         gattServer = null
+    }
+
+    @Suppress("DEPRECATION")
+    private fun startHeartbeat() {
+        heartbeatJob?.cancel()
+        heartbeatJob = scope.launch {
+            val heartbeat = byteArrayOf(HEARTBEAT_BYTE)
+            while (isActive) {
+                delay(BleConfig.HEARTBEAT_INTERVAL_MS)
+                val device = connectedDevice ?: break
+                val server = gattServer ?: break
+                val service = server.getService(serviceUuid) ?: break
+                val char = service.getCharacteristic(commandCharUuid) ?: break
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                    server.notifyCharacteristicChanged(device, char, false, heartbeat)
+                } else {
+                    char.value = heartbeat
+                    server.notifyCharacteristicChanged(device, char, false)
+                }
+            }
+        }
     }
 
     @Suppress("DEPRECATION")

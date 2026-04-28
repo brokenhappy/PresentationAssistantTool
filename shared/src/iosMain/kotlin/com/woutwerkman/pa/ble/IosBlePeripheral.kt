@@ -34,6 +34,7 @@ class IosBlePeripheral(
     private var peripheralManager: CBPeripheralManager? = null
     private var connectedCentral: CBCentral? = null
     private var commandCharacteristic: CBMutableCharacteristic? = null
+    private var heartbeatJob: Job? = null
 
     private val assembler = MessageAssembler()
     private val delegate = PeripheralDelegate()
@@ -43,6 +44,7 @@ class IosBlePeripheral(
     }
 
     override suspend fun stopAdvertisingOrScanning() {
+        heartbeatJob?.cancel()
         peripheralManager?.stopAdvertising()
         peripheralManager = null
     }
@@ -153,6 +155,11 @@ class IosBlePeripheral(
         ) {
             for (request in didReceiveWriteRequests) {
                 val req = request as? CBATTRequest ?: continue
+
+                if (connectedCentral == null) {
+                    markConnected(req.central)
+                }
+
                 val value = req.value ?: continue
                 val bytes = value.toByteArray()
 
@@ -175,12 +182,17 @@ class IosBlePeripheral(
             central: CBCentral,
             didSubscribeToCharacteristic: CBCharacteristic,
         ) {
+            markConnected(central)
+        }
+
+        private fun markConnected(central: CBCentral) {
             connectedCentral = central
             _error.value = null
             _connectionState.value = BleConnectionState.Connected
             val peer = PairedPeer(id = central.identifier.UUIDString, name = "Desktop")
             _connectedPeers.value = listOf(peer)
             scope.launch { peerStorage.addPeer(peer) }
+            startHeartbeat()
         }
 
         @kotlinx.cinterop.ObjCSignatureOverride
@@ -189,9 +201,24 @@ class IosBlePeripheral(
             central: CBCentral,
             didUnsubscribeFromCharacteristic: CBCharacteristic,
         ) {
+            heartbeatJob?.cancel()
             connectedCentral = null
             _connectionState.value = BleConnectionState.Disconnected
             _connectedPeers.value = emptyList()
+        }
+    }
+
+    private fun startHeartbeat() {
+        heartbeatJob?.cancel()
+        heartbeatJob = scope.launch {
+            val heartbeat = byteArrayOf(HEARTBEAT_BYTE).toNSData()
+            while (isActive) {
+                delay(BleConfig.HEARTBEAT_INTERVAL_MS)
+                val central = connectedCentral ?: break
+                val char = commandCharacteristic ?: break
+                val pm = peripheralManager ?: break
+                pm.updateValue(heartbeat, forCharacteristic = char, onSubscribedCentrals = listOf(central))
+            }
         }
     }
 }

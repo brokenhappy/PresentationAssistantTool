@@ -15,9 +15,10 @@ import platform.Foundation.NSFileManager
 import platform.Foundation.NSURL
 import platform.Foundation.NSUserDomainMask
 import platform.Foundation.NSUUID
+import platform.Foundation.NSUserDefaults
 
 fun MainViewController() = ComposeUIViewController {
-    val deviceId = remember { NSUUID().UUIDString }
+    val deviceId = remember { getOrCreateDeviceId() }
     val scope = remember { CoroutineScope(SupervisorJob() + Dispatchers.Default) }
     val docDir = remember {
         val paths = NSFileManager.defaultManager.URLsForDirectory(NSDocumentDirectory, NSUserDomainMask)
@@ -35,4 +36,12 @@ fun MainViewController() = ComposeUIViewController {
             if (enabled) keepAwake.enable() else keepAwake.disable()
         },
     )
+}
+
+private fun getOrCreateDeviceId(): String {
+    val defaults = NSUserDefaults.standardUserDefaults
+    val key = "pa_device_id"
+    return defaults.stringForKey(key) ?: NSUUID().UUIDString.also {
+        defaults.setObject(it, forKey = key)
+    }
 }

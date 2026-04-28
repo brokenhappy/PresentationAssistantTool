@@ -31,6 +31,8 @@ fun decodeBleMessage(bytes: ByteArray): BleMessage =
 fun PresentationState.forBleSync(): PresentationState =
     if (runs.isEmpty()) this else copy(runs = emptyList())
 
+const val HEARTBEAT_BYTE: Byte = 0x04
+
 private const val CHUNK_COMPLETE: Byte = 0x00
 private const val CHUNK_START: Byte = 0x01
 private const val CHUNK_CONTINUE: Byte = 0x02
@@ -63,6 +65,7 @@ class MessageAssembler {
 
     fun processChunk(chunk: ByteArray): BleMessage? {
         if (chunk.isEmpty()) return null
+        if (chunk[0] == HEARTBEAT_BYTE) return null
         val flag = chunk[0]
         val data = if (chunk.size > 1) chunk.copyOfRange(1, chunk.size) else ByteArray(0)
         return when (flag) {

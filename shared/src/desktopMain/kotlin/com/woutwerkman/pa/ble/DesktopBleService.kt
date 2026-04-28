@@ -1,9 +1,6 @@
 package com.woutwerkman.pa.ble
 
-import com.juul.kable.Identifier
-import com.juul.kable.Peripheral
-import com.juul.kable.Scanner
-import com.juul.kable.characteristicOf
+import com.juul.kable.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlin.coroutines.coroutineContext
@@ -51,6 +48,7 @@ class DesktopBleService(
     )
 
     private val assemblers = mutableMapOf<String, MessageAssembler>()
+    private val lastHeartbeat = mutableMapOf<String, Long>()
 
     override suspend fun startAdvertisingOrScanning() {
         startAutoReconnect()
@@ -69,7 +67,7 @@ class DesktopBleService(
         for ((deviceId, p) in snapshot) {
             try {
                 for (chunk in chunks) {
-                    p.write(stateChar, chunk)
+                    p.write(stateChar, chunk, WriteType.WithResponse)
                 }
             } catch (_: Exception) {
                 handleDisconnect(deviceId)
@@ -84,6 +82,7 @@ class DesktopBleService(
         }
         observeJobs.remove(id)?.cancel()
         assemblers.remove(id)
+        lastHeartbeat.remove(id)
         try { p?.disconnect() } catch (_: Exception) {}
         updateConnectionState()
     }
@@ -121,9 +120,13 @@ class DesktopBleService(
     }
 
     private suspend fun connectToDevice(targetDeviceId: String) {
-        if (synchronized(peripherals) { peripherals.containsKey(targetDeviceId) }) return
+        connectToAnyDevice(setOf(targetDeviceId))
+    }
 
-        val triedIdentifiers = mutableSetOf<Identifier>()
+    private suspend fun connectToAnyDevice(targetDeviceIds: Set<String>) {
+        if (synchronized(peripherals) { targetDeviceIds.all { it in peripherals } }) return
+
+        val wrongDeviceIdentifiers = mutableSetOf<Identifier>()
 
         while (coroutineContext.isActive) {
             val scanner = Scanner {
@@ -133,10 +136,9 @@ class DesktopBleService(
             }
 
             val advertisement = scanner.advertisements.first { adv ->
-                adv.identifier !in triedIdentifiers
+                adv.identifier !in wrongDeviceIdentifiers
             }
 
-            triedIdentifiers.add(advertisement.identifier)
             _connectionState.value = BleConnectionState.Connecting
             val p = Peripheral(advertisement)
 
@@ -148,7 +150,7 @@ class DesktopBleService(
                 ))
                 val deviceId = deviceIdBytes.decodeToString()
 
-                if (deviceId == targetDeviceId) {
+                if (deviceId in targetDeviceIds && !synchronized(peripherals) { peripherals.containsKey(deviceId) }) {
                     _error.value = null
                     val peer = PairedPeer(id = deviceId, name = advertisement.name ?: "Unknown Device")
                     synchronized(peripherals) {
@@ -161,11 +163,14 @@ class DesktopBleService(
                     observeMessages(deviceId, p)
                     return
                 } else {
+                    wrongDeviceIdentifiers.add(advertisement.identifier)
                     try { p.disconnect() } catch (_: Exception) {}
                 }
             } catch (_: CancellationException) {
                 throw CancellationException()
             } catch (_: Exception) {
+                try { p.disconnect() } catch (_: Exception) {}
+                delay(1_000)
             }
         }
     }
@@ -176,11 +181,11 @@ class DesktopBleService(
             while (isActive) {
                 val peers = peerStorage.load()
                 val connectedIds = synchronized(peripherals) { peripherals.keys.toSet() }
-                for (peer in peers) {
-                    if (peer.id in connectedIds) continue
+                val disconnectedIds = peers.map { it.id }.filter { it !in connectedIds }.toSet()
+                if (disconnectedIds.isNotEmpty()) {
                     try {
                         withTimeout(BleConfig.SCAN_DURATION_MS.milliseconds) {
-                            connectToDevice(peer.id)
+                            connectToAnyDevice(disconnectedIds)
                         }
                     } catch (_: Exception) {}
                     updateConnectionState()
@@ -192,9 +197,28 @@ class DesktopBleService(
 
     private fun observeMessages(deviceId: String, p: Peripheral) {
         observeJobs[deviceId]?.cancel()
+        lastHeartbeat[deviceId] = System.currentTimeMillis()
         observeJobs[deviceId] = scope.launch {
+            launch {
+                p.state.first { it is State.Disconnected }
+                handleDisconnect(deviceId)
+            }
+            launch {
+                while (isActive) {
+                    delay(BleConfig.HEARTBEAT_TIMEOUT_MS.milliseconds)
+                    val last = lastHeartbeat[deviceId] ?: break
+                    if (System.currentTimeMillis() - last > BleConfig.HEARTBEAT_TIMEOUT_MS) {
+                        handleDisconnect(deviceId)
+                        break
+                    }
+                }
+            }
             try {
                 p.observe(commandChar).collect { bytes ->
+                    if (bytes.isNotEmpty() && bytes[0] == HEARTBEAT_BYTE) {
+                        lastHeartbeat[deviceId] = System.currentTimeMillis()
+                        return@collect
+                    }
                     try {
                         val assembler = assemblers[deviceId] ?: return@collect
                         val message = assembler.processChunk(bytes)
@@ -211,13 +235,18 @@ class DesktopBleService(
     }
 
     private fun handleDisconnect(deviceId: String) {
-        synchronized(peripherals) {
-            peripherals.remove(deviceId)
+        val oldPeripheral = synchronized(peripherals) {
             peerInfo.remove(deviceId)
+            peripherals.remove(deviceId)
         }
         observeJobs.remove(deviceId)?.cancel()
         assemblers.remove(deviceId)
+        lastHeartbeat.remove(deviceId)
+        if (oldPeripheral != null) {
+            scope.launch { try { oldPeripheral.disconnect() } catch (_: Exception) {} }
+        }
         updateConnectionState()
+        startAutoReconnect()
     }
 
     private fun updateConnectionState() {
