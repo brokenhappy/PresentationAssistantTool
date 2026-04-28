@@ -50,9 +50,11 @@ fun MobileApp(
             while (true) {
                 delay(100.milliseconds)
                 val now = currentTimeMs()
+                val currentKey = state.currentBulletKey
+                val accumulated = if (currentKey != null) state.currentRunDurations[currentKey] ?: 0L else 0L
                 state = state.copy(
                     elapsedMs = now - presentationStartMs,
-                    currentBulletElapsedMs = now - bulletStartMs,
+                    currentBulletElapsedMs = accumulated + (now - bulletStartMs),
                 )
             }
         }
@@ -174,35 +176,57 @@ private fun applyRemoteEvent(state: PresentationState, event: PresentationEvent)
         )
         is PresentationEvent.Advance -> {
             if (!state.isActive) return null
+            val updatedDurations = saveBulletDuration(state)
             if (state.isLastBullet) {
                 state.copy(
                     isActive = false,
                     currentBulletIndex = 0,
                     elapsedMs = 0,
                     currentBulletElapsedMs = 0,
+                    currentRunDurations = emptyMap(),
                 )
             } else {
+                val nextIndex = state.currentBulletIndex + 1
+                val nextKey = state.profile?.keyAt(nextIndex)
+                val nextAccumulated = if (nextKey != null) updatedDurations[nextKey] ?: 0L else 0L
                 state.copy(
-                    currentBulletIndex = state.currentBulletIndex + 1,
-                    currentBulletElapsedMs = 0,
+                    currentBulletIndex = nextIndex,
+                    currentBulletElapsedMs = nextAccumulated,
+                    currentRunDurations = updatedDurations,
                 )
             }
         }
         is PresentationEvent.GoBack -> {
             if (!state.isActive || state.currentBulletIndex <= 0) return null
+            val updatedDurations = saveBulletDuration(state)
+            val targetIndex = state.currentBulletIndex - 1
+            val targetKey = state.profile?.keyAt(targetIndex)
+            val targetAccumulated = if (targetKey != null) updatedDurations[targetKey] ?: 0L else 0L
             state.copy(
-                currentBulletIndex = state.currentBulletIndex - 1,
-                currentBulletElapsedMs = 0,
+                currentBulletIndex = targetIndex,
+                currentBulletElapsedMs = targetAccumulated,
+                currentRunDurations = updatedDurations,
             )
         }
-        is PresentationEvent.GoTo -> state.copy(
-            currentBulletIndex = event.index,
-            currentBulletElapsedMs = 0,
-        )
+        is PresentationEvent.GoTo -> {
+            val updatedDurations = saveBulletDuration(state)
+            val targetKey = state.profile?.keyAt(event.index)
+            val targetAccumulated = if (targetKey != null) updatedDurations[targetKey] ?: 0L else 0L
+            state.copy(
+                currentBulletIndex = event.index,
+                currentBulletElapsedMs = targetAccumulated,
+                currentRunDurations = updatedDurations,
+            )
+        }
         is PresentationEvent.CloseProfile -> PresentationState()
         is PresentationEvent.LoadProfile -> null
         is PresentationEvent.ToggleRunInclusion -> null
     }
+}
+
+private fun saveBulletDuration(state: PresentationState): Map<String, Long> {
+    val key = state.currentBulletKey ?: return state.currentRunDurations
+    return state.currentRunDurations + (key to state.currentBulletElapsedMs)
 }
 
 private fun currentTimeMs(): Long = com.woutwerkman.pa.platform.currentTimeMs()
