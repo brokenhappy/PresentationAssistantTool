@@ -31,7 +31,9 @@ import com.woutwerkman.pa.repository.ProfileRepository
 import com.woutwerkman.pa.ui.expanded.ExpandedView
 import com.woutwerkman.pa.ui.minified.MinifiedView
 import com.woutwerkman.pa.ui.theme.AppTheme
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import java.awt.datatransfer.DataFlavor
 import java.awt.image.BufferedImage
 import java.io.File
@@ -40,100 +42,100 @@ import java.io.File
 fun main() {
     InputMonitoringPermission.request()
     application {
-    val engineScope = remember { CoroutineScope(SupervisorJob() + Dispatchers.Default) }
-    val fileSystem = remember { PlatformFileSystem(System.getProperty("user.home") + "/.presentationassistant") }
-    val repository = remember { ProfileRepository(fileSystem) }
-    val appSettings = remember { AppSettings(fileSystem) }
-    val engine = remember { PresentationEngine(repository, engineScope) }
-    val peerStorage = remember { PeerStorage(fileSystem) }
-    val bleService = remember { DesktopBleService(engineScope, peerStorage) }
-    val state by engine.state.collectAsState()
-    val connectedPeers by bleService.connectedPeers.collectAsState()
-    val bleConnectionState by bleService.connectionState.collectAsState()
-    val bleError by bleService.error.collectAsState()
-    val spotlightManager = remember { SpotlightManager(engineScope, engine::onEvent) }
-    val spotlightConnected by spotlightManager.connected.collectAsState()
+        val engineScope = remember { CoroutineScope(SupervisorJob() + Dispatchers.Default) }
+        val fileSystem = remember { PlatformFileSystem(System.getProperty("user.home") + "/.presentationassistant") }
+        val repository = remember { ProfileRepository(fileSystem) }
+        val appSettings = remember { AppSettings(fileSystem) }
+        val engine = remember { PresentationEngine(repository, engineScope) }
+        val peerStorage = remember { PeerStorage(fileSystem) }
+        val bleService = remember { DesktopBleService(engineScope, peerStorage) }
+        val state by engine.state.collectAsState()
+        val connectedPeers by bleService.connectedPeers.collectAsState()
+        val bleConnectionState by bleService.connectionState.collectAsState()
+        val bleError by bleService.error.collectAsState()
+        val spotlightManager = remember { SpotlightManager(engineScope, engine::onEvent) }
+        val spotlightConnected by spotlightManager.connected.collectAsState()
 
-    var showMinified by remember { mutableStateOf(true) }
-    var showExpanded by remember { mutableStateOf(false) }
-    var showConnection by remember { mutableStateOf(false) }
+        var showMinified by remember { mutableStateOf(true) }
+        var showExpanded by remember { mutableStateOf(false) }
+        var showConnection by remember { mutableStateOf(false) }
 
-    val trayIcon = remember { createTrayIcon() }
+        val trayIcon = remember { createTrayIcon() }
 
-    LoadLastProfile(engine, appSettings)
-    PersistProfilePath(engine, appSettings)
-    ForwardEventsToMobile(engine, bleService, connectedPeers)
-    HandleIncomingBleMessages(engine, bleService, state)
-    SyncStateOnConnect(engine, bleService, connectedPeers)
-    AutoReconnect(bleService)
+        LoadLastProfile(engine, appSettings)
+        PersistProfilePath(engine, appSettings)
+        ForwardEventsToMobile(engine, bleService, connectedPeers)
+        HandleIncomingBleMessages(engine, bleService, state)
+        SyncStateOnConnect(engine, bleService, connectedPeers)
+        AutoReconnect(bleService)
 
-    DisposableEffect(engine) {
-        val shortcutManager = GlobalShortcutManager {
-            engine.onEvent(PresentationEvent.Advance)
+        DisposableEffect(engine) {
+            val shortcutManager = GlobalShortcutManager {
+                engine.onEvent(PresentationEvent.Advance)
+            }
+            shortcutManager.register()
+            onDispose { shortcutManager.unregister() }
         }
-        shortcutManager.register()
-        onDispose { shortcutManager.unregister() }
-    }
 
-    DisposableEffect(spotlightManager) {
-        spotlightManager.start()
-        onDispose { spotlightManager.stop() }
-    }
+        DisposableEffect(spotlightManager) {
+            spotlightManager.start()
+            onDispose { spotlightManager.stop() }
+        }
 
-    SpotlightTimingAlerts(engine, spotlightManager)
+        SpotlightTimingAlerts(engine, spotlightManager)
 
-    AppTray(
-        trayIcon = trayIcon,
-        state = state,
-        showMinified = showMinified,
-        spotlightConnected = spotlightConnected,
-        onToggleMinified = { showMinified = !showMinified },
-        onShowExpanded = { showExpanded = true },
-        onShowConnection = { showConnection = true },
-        onCloseProfile = { engine.onEvent(PresentationEvent.CloseProfile) },
-    )
-
-    if (showMinified) {
-        MinifiedWindow(
+        AppTray(
+            trayIcon = trayIcon,
             state = state,
-            engine = engine,
-            onHide = { showMinified = false },
-            onExpand = { showExpanded = true },
+            showMinified = showMinified,
+            spotlightConnected = spotlightConnected,
+            onToggleMinified = { showMinified = !showMinified },
+            onShowExpanded = { showExpanded = true },
+            onShowConnection = { showConnection = true },
+            onCloseProfile = { engine.onEvent(PresentationEvent.CloseProfile) },
         )
-    }
 
-    if (showExpanded) {
-        Window(
-            onCloseRequest = { showExpanded = false },
-            title = state.profile?.title ?: "Expanded View",
-            state = rememberWindowState(size = DpSize(500.dp, 650.dp)),
-        ) {
-            AppTheme {
-                ExpandedView(state = state, onEvent = engine::onEvent)
+        if (showMinified) {
+            MinifiedWindow(
+                state = state,
+                engine = engine,
+                onHide = { showMinified = false },
+                onExpand = { showExpanded = true },
+            )
+        }
+
+        if (showExpanded) {
+            Window(
+                onCloseRequest = { showExpanded = false },
+                title = state.profile?.title ?: "Expanded View",
+                state = rememberWindowState(size = DpSize(500.dp, 650.dp)),
+            ) {
+                AppTheme {
+                    ExpandedView(state = state, onEvent = engine::onEvent)
+                }
             }
         }
-    }
 
-    if (showConnection) {
-        Window(
-            onCloseRequest = { showConnection = false },
-            title = "Connect Device",
-            state = rememberWindowState(size = DpSize(450.dp, 500.dp)),
-        ) {
-            val pairedPeers by produceState(emptyList<PairedPeer>()) {
-                value = bleService.getPersistedPeers()
-            }
-            AppTheme {
-                DesktopConnectionView(
-                    bleService = bleService,
-                    connectionState = bleConnectionState,
-                    connectedPeers = connectedPeers,
-                    pairedPeers = pairedPeers,
-                    bleError = bleError,
-                )
+        if (showConnection) {
+            Window(
+                onCloseRequest = { showConnection = false },
+                title = "Connect Device",
+                state = rememberWindowState(size = DpSize(450.dp, 500.dp)),
+            ) {
+                val pairedPeers by produceState(emptyList<PairedPeer>()) {
+                    value = bleService.getPersistedPeers()
+                }
+                AppTheme {
+                    DesktopConnectionView(
+                        bleService = bleService,
+                        connectionState = bleConnectionState,
+                        connectedPeers = connectedPeers,
+                        pairedPeers = pairedPeers,
+                        bleError = bleError,
+                    )
+                }
             }
         }
-    }
     }
 }
 
@@ -168,7 +170,8 @@ private fun ForwardEventsToMobile(
             if (currentPeers.isNotEmpty()) {
                 when (event) {
                     is PresentationEvent.LoadProfile,
-                    is PresentationEvent.CloseProfile ->
+                    is PresentationEvent.CloseProfile,
+                        ->
                         bleService.sendMessage(BleMessage.FullSync(engine.state.value.forBleSync()))
                     else -> bleService.sendMessage(BleMessage.Event(event))
                 }
