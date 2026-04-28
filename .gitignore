@@ -46,3 +46,4 @@ bin/
 
 ### Native build artifacts ###
 *.dylib
+/notes/*
