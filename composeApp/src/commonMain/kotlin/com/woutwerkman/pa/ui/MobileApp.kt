@@ -31,6 +31,7 @@ fun MobileApp(
     bleService: BleService,
     deviceId: String,
     onKeepAwakeChanged: (Boolean) -> Unit,
+    onVibrate: (durationMs: Long) -> Unit = {},
 ) {
     val connectionState by bleService.connectionState.collectAsState()
     val connectedPeers by bleService.connectedPeers.collectAsState()
@@ -81,6 +82,11 @@ fun MobileApp(
                     }
                 }
                 is BleMessage.SyncRequest -> {}
+                is BleMessage.Vibrate -> {
+                    if (currentScreen != MobileScreen.SpeakerNotes) {
+                        onVibrate(message.durationMs)
+                    }
+                }
             }
         }
     }

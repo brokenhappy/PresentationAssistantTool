@@ -20,6 +20,9 @@ sealed interface BleMessage {
 
     @Serializable
     data object SyncRequest : BleMessage
+
+    @Serializable
+    data class Vibrate(val durationMs: Long) : BleMessage
 }
 
 fun BleMessage.encode(): ByteArray =

@@ -82,7 +82,7 @@ fun main() {
             onDispose { spotlightManager.stop() }
         }
 
-        SpotlightTimingAlerts(engine, spotlightManager)
+        SpotlightTimingAlerts(engine, spotlightManager, bleService)
 
         AppTray(
             trayIcon = trayIcon,
@@ -194,6 +194,7 @@ private fun HandleIncomingBleMessages(
                 is BleMessage.SyncRequest ->
                     bleService.sendMessage(BleMessage.FullSync(currentState.forBleSync()))
                 is BleMessage.FullSync -> {}
+                is BleMessage.Vibrate -> {}
             }
         }
     }
@@ -223,9 +224,13 @@ private fun AutoReconnect(bleService: DesktopBleService) {
 private fun SpotlightTimingAlerts(
     engine: PresentationEngine,
     spotlightManager: SpotlightManager,
+    bleService: DesktopBleService,
 ) {
     LaunchedEffect(spotlightManager) {
-        TimingAlerts(engine.state, spotlightManager::vibrate).run()
+        TimingAlerts(engine.state) { duration ->
+            spotlightManager.vibrate(duration)
+            bleService.sendMessage(BleMessage.Vibrate(duration.inWholeMilliseconds))
+        }.run()
     }
 }
 

@@ -10,12 +10,16 @@ import com.woutwerkman.pa.ui.MobileApp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import platform.AudioToolbox.AudioServicesPlaySystemSound
+import platform.AudioToolbox.kSystemSoundID_Vibrate
 import platform.Foundation.NSDocumentDirectory
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSURL
 import platform.Foundation.NSUserDomainMask
 import platform.Foundation.NSUUID
 import platform.Foundation.NSUserDefaults
+import platform.UIKit.UIImpactFeedbackGenerator
+import platform.UIKit.UIImpactFeedbackStyle
 
 fun MainViewController() = ComposeUIViewController {
     val deviceId = remember { getOrCreateDeviceId() }
@@ -29,12 +33,15 @@ fun MainViewController() = ComposeUIViewController {
     val bleService = remember { IosBlePeripheral(scope, peerStorage, deviceId) }
     val keepAwake = remember { KeepAwakeManager() }
 
+    val hapticGenerator = remember { UIImpactFeedbackGenerator(style = UIImpactFeedbackStyle.UIImpactFeedbackStyleHeavy) }
+
     MobileApp(
         bleService = bleService,
         deviceId = deviceId,
         onKeepAwakeChanged = { enabled ->
             if (enabled) keepAwake.enable() else keepAwake.disable()
         },
+        onVibrate = { _ -> hapticGenerator.impactOccurred() },
     )
 }
 
