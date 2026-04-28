@@ -40,14 +40,14 @@ fun ControlView(
             Spacer(Modifier.height(32.dp))
 
             TimerDisplay(
-                elapsedMs = state.elapsedMs,
+                elapsedMs = state.currentBulletElapsedMs,
                 style = MaterialTheme.typography.displayMedium,
             )
 
             Spacer(Modifier.height(4.dp))
 
             DeltaTimerDisplay(
-                deltaMs = state.remainingVsAverage,
+                deltaMs = state.globalScheduleDelta,
                 style = MaterialTheme.typography.titleMedium,
             )
 

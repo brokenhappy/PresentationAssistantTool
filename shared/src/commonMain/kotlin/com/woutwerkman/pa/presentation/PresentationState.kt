@@ -42,4 +42,15 @@ data class PresentationState(
             if (avg == 0L) return null
             return currentBulletElapsedMs - avg
         }
+
+    val globalScheduleDelta: Long?
+        get() {
+            val profile = profile ?: return null
+            val averages = stats.averageDurations
+            if (averages.isEmpty()) return null
+            val expectedMs = (0..currentBulletIndex).sumOf { i ->
+                averages[profile.keyAt(i)] ?: return null
+            }
+            return elapsedMs - expectedMs
+        }
 }
