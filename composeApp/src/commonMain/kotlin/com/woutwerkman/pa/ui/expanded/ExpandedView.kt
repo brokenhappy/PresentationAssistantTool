@@ -24,6 +24,7 @@ import com.woutwerkman.pa.ui.components.formatTimestamp
 fun ExpandedView(
     state: PresentationState,
     onEvent: (PresentationEvent) -> Unit,
+    onBack: (() -> Unit)? = null,
 ) {
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -37,6 +38,11 @@ fun ExpandedView(
         }
 
         Column(modifier = Modifier.fillMaxSize()) {
+            if (onBack != null) {
+                TextButton(onClick = onBack, modifier = Modifier.padding(start = 4.dp, top = 4.dp)) {
+                    Text("← Back")
+                }
+            }
             if (state.isActive) {
                 ActiveHeader(state)
             } else {

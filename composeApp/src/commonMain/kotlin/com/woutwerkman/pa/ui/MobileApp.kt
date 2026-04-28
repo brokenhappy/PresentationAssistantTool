@@ -150,6 +150,7 @@ fun MobileApp(
                 MobileScreen.Expanded -> ExpandedView(
                     state = state,
                     onEvent = sendEvent,
+                    onBack = { currentScreen = MobileScreen.Control },
                 )
             }
         }
