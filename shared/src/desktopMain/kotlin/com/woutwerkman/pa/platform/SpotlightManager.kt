@@ -1,14 +1,19 @@
 package com.woutwerkman.pa.platform
 
+import com.sun.jna.Library
+import com.sun.jna.Native
 import com.woutwerkman.pa.presentation.PresentationEvent
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import org.hid4java.HidDevice
 import org.hid4java.HidManager
 import org.hid4java.HidServices
 import org.hid4java.HidServicesSpecification
+import java.io.File
 
 class SpotlightManager(
     private val scope: CoroutineScope,
@@ -21,9 +26,12 @@ class SpotlightManager(
     private var device: HidDevice? = null
     private var activeDevIdx: Byte = 0
     private var activeFeatIdx: Byte = 0
+    private var presenterCtrlIdx: Byte? = null
+    private var vibrateChannel: HidppChannel? = null
     private var pollJob: Job? = null
     private var readJob: Job? = null
     private var nativeMonitor: NativeHidMonitor? = null
+    private var btBleActive = false
 
     fun start() {
         if (pollJob != null) return
@@ -49,41 +57,52 @@ class SpotlightManager(
         pollJob = null
         nativeMonitor?.stop()
         nativeMonitor = null
+        if (btBleActive) {
+            try { bleLib?.spotlight_ble_cleanup() } catch (_: Exception) {}
+            btBleActive = false
+        }
+        vibrateChannel = null
         device?.let { dev ->
-            try { undivertButtons(dev) } catch (_: Exception) {}
+            if (activeFeatIdx != 0.toByte()) {
+                try { undivertButtons(dev) } catch (_: Exception) {}
+            }
             try { dev.close() } catch (_: Exception) {}
         }
         device = null
+        presenterCtrlIdx = null
         try { hidServices?.shutdown() } catch (_: Exception) {}
         hidServices = null
         _connected.value = false
     }
 
     private fun tryConnect() {
-        if (tryHidppConnect()) return
-        if (nativeMonitor == null) tryNativeConnect()
+        if (tryUsbConnect()) return
+        if (nativeMonitor == null) tryBtConnect()
     }
 
-    private fun tryHidppConnect(): Boolean {
+    private fun tryUsbConnect(): Boolean {
         val services = hidServices ?: return false
         val candidates = services.attachedHidDevices.filter { dev ->
             dev.vendorId.unsigned() == LOGITECH_VENDOR &&
-                dev.productId.unsigned() in SPOTLIGHT_PRODUCTS &&
+                dev.productId.unsigned() == USB_PRODUCT &&
                 dev.usagePage.unsigned() >= VENDOR_PAGE_MIN
         }
         for (candidate in candidates) {
             try {
                 if (!candidate.open()) continue
-                val devIdx = if (candidate.productId.unsigned() == USB_PRODUCT) DEV_WIRELESS else DEV_CORDED
-                val featIdx = findReprogControls(candidate, devIdx)
+                val channel = Hid4JavaChannel(candidate)
+                val featIdx = findReprogControls(channel, DEV_WIRELESS)
                 if (featIdx != null) {
                     nativeMonitor?.stop()
                     nativeMonitor = null
-                    divertButton(candidate, devIdx, featIdx, CID_NEXT)
-                    divertButton(candidate, devIdx, featIdx, CID_BACK)
+                    cleanupBtBle()
+                    divertButton(candidate, DEV_WIRELESS, featIdx, CID_NEXT)
+                    divertButton(candidate, DEV_WIRELESS, featIdx, CID_BACK)
+                    presenterCtrlIdx = findFeatureIndex(channel, DEV_WIRELESS, 0x1A, 0x00)
                     device = candidate
-                    activeDevIdx = devIdx
+                    activeDevIdx = DEV_WIRELESS
                     activeFeatIdx = featIdx
+                    vibrateChannel = channel
                     _connected.value = true
                     startReadLoop(candidate, featIdx)
                     return true
@@ -96,16 +115,25 @@ class SpotlightManager(
         return false
     }
 
-    private fun tryNativeConnect() {
+    private fun tryBtConnect() {
         val monitor = NativeHidMonitor(
             vendorId = LOGITECH_VENDOR,
             productId = BT_PRODUCT,
-            onConnected = { connected -> _connected.value = connected },
+            onConnected = { connected ->
+                _connected.value = connected
+                if (connected) initBtBle() else cleanupBtBle()
+            },
             onInput = { usagePage, usage, value ->
                 if (usagePage == KEYBOARD_PAGE && value == 1L) {
                     when (usage) {
-                        KEY_RIGHT, KEY_PAGE_DOWN -> onEvent(PresentationEvent.Advance)
-                        KEY_LEFT, KEY_PAGE_UP -> onEvent(PresentationEvent.GoBack)
+                        KEY_RIGHT, KEY_PAGE_DOWN -> {
+                            scope.launch { vibrate(100.milliseconds) }
+                            onEvent(PresentationEvent.Advance)
+                        }
+                        KEY_LEFT, KEY_PAGE_UP -> {
+                            scope.launch { vibrate(100.milliseconds) }
+                            onEvent(PresentationEvent.GoBack)
+                        }
                     }
                 }
             },
@@ -115,11 +143,26 @@ class SpotlightManager(
         }
     }
 
-    private fun findReprogControls(dev: HidDevice, devIdx: Byte): Byte? {
-        val msg = byteArrayOf(devIdx, IROOT_INDEX, swFunc(0), 0x1b, 0x04, 0x00)
-        dev.write(msg, 7, REPORT_SHORT)
+    private fun initBtBle() {
+        try {
+            val lib = bleLib ?: return
+            lib.spotlight_ble_init()
+            btBleActive = true
+        } catch (_: Exception) {}
+    }
+
+    private fun cleanupBtBle() {
+        if (btBleActive) {
+            try { bleLib?.spotlight_ble_cleanup() } catch (_: Exception) {}
+            btBleActive = false
+        }
+    }
+
+    private fun findFeatureIndex(ch: HidppChannel, devIdx: Byte, featureHi: Int, featureLo: Int): Byte? {
+        val msg = byteArrayOf(devIdx, IROOT_INDEX, swFunc(0), featureHi.toByte(), featureLo.toByte(), 0x00)
+        ch.write(msg, 7, REPORT_SHORT)
         repeat(10) {
-            val r = readHidpp(dev, 2000) ?: return@repeat
+            val r = ch.readHidpp(2000) ?: return@repeat
             if (r.featIdx == IROOT_INDEX && r.func == 0) {
                 val idx = r.params.getOrNull(0) ?: return null
                 return if (idx == 0x00.toByte()) null else idx
@@ -129,6 +172,10 @@ class SpotlightManager(
         return null
     }
 
+    private fun findReprogControls(ch: HidppChannel, devIdx: Byte): Byte? {
+        return findFeatureIndex(ch, devIdx, 0x1b, 0x04)
+    }
+
     private fun divertButton(dev: HidDevice, devIdx: Byte, featIdx: Byte, cid: Int) {
         val params = ByteArray(16)
         params[0] = (cid shr 8).toByte()
@@ -136,7 +183,7 @@ class SpotlightManager(
         params[2] = 0x03 // divert=1, dvalid=1
         val msg = byteArrayOf(devIdx, featIdx, swFunc(3)) + params
         dev.write(msg, 20, REPORT_LONG)
-        readHidpp(dev, 500)
+        Hid4JavaChannel(dev).readHidpp(500)
     }
 
     private fun undivertButtons(dev: HidDevice) {
@@ -148,6 +195,30 @@ class SpotlightManager(
             val msg = byteArrayOf(activeDevIdx, activeFeatIdx, swFunc(3)) + params
             try { dev.write(msg, 20, REPORT_LONG) } catch (_: Exception) {}
         }
+    }
+
+    suspend fun vibrate(duration: Duration) {
+        val length = (duration.inWholeMilliseconds / 100).coerceIn(1, 10)
+        if (btBleActive) {
+            withContext(Dispatchers.IO) {
+                try { bleLib?.spotlight_ble_vibrate(length.toByte()) } catch (_: Exception) {}
+            }
+            delay(duration)
+            return
+        }
+        val ch = vibrateChannel ?: return
+        val pcIdx = presenterCtrlIdx ?: return
+        withContext(Dispatchers.IO) {
+            try {
+                val params = ByteArray(16)
+                params[0] = length.toByte()
+                params[1] = 0xE8.toByte()
+                params[2] = 0x80.toByte()
+                val msg = byteArrayOf(activeDevIdx, pcIdx, swFunc(1)) + params
+                ch.write(msg, 20, REPORT_LONG)
+            } catch (_: Exception) {}
+        }
+        delay(duration)
     }
 
     private fun startReadLoop(dev: HidDevice, featIdx: Byte) {
@@ -169,8 +240,14 @@ class SpotlightManager(
                     val nextNow = CID_NEXT in pressed
                     val backNow = CID_BACK in pressed
 
-                    if (nextNow && !prevNext) onEvent(PresentationEvent.Advance)
-                    if (backNow && !prevBack) onEvent(PresentationEvent.GoBack)
+                    if (nextNow && !prevNext) {
+                        scope.launch { vibrate(100.milliseconds) }
+                        onEvent(PresentationEvent.Advance)
+                    }
+                    if (backNow && !prevBack) {
+                        scope.launch { vibrate(100.milliseconds) }
+                        onEvent(PresentationEvent.GoBack)
+                    }
 
                     prevNext = nextNow
                     prevBack = backNow
@@ -194,37 +271,61 @@ class SpotlightManager(
     private fun handleDisconnect() {
         try { device?.close() } catch (_: Exception) {}
         device = null
+        vibrateChannel = null
+        presenterCtrlIdx = null
         _connected.value = false
     }
 
+    private interface HidppChannel {
+        fun write(message: ByteArray, packetLength: Int, reportId: Byte)
+        fun readHidpp(timeoutMs: Int): HidppMsg?
+    }
+
+    private class Hid4JavaChannel(private val dev: HidDevice) : HidppChannel {
+        override fun write(message: ByteArray, packetLength: Int, reportId: Byte) {
+            dev.write(message, packetLength, reportId)
+        }
+
+        override fun readHidpp(timeoutMs: Int): HidppMsg? {
+            val buf = ByteArray(64)
+            val n = dev.read(buf, timeoutMs)
+            if (n < 0) error("Device read error")
+            if (n == 0) return null
+            return parseHidpp(buf, n)
+        }
+    }
+
     private class HidppMsg(val featIdx: Byte, val func: Int, val params: ByteArray)
-
-    private fun readHidpp(dev: HidDevice, timeoutMs: Int): HidppMsg? {
-        val buf = ByteArray(64)
-        val n = dev.read(buf, timeoutMs)
-        if (n < 0) error("Device read error")
-        if (n == 0) return null
-        return parseHidpp(buf, n)
-    }
-
-    private fun parseHidpp(buf: ByteArray, n: Int): HidppMsg? {
-        val off = if (buf[0] == REPORT_SHORT || buf[0] == REPORT_LONG) 1 else 0
-        if (n - off < 3) return null
-
-        val featIdx = buf[off + 1]
-        val fb = buf[off + 2].toInt() and 0xFF
-        val paramStart = off + 3
-        val params = if (n > paramStart) buf.copyOfRange(paramStart, n) else ByteArray(0)
-        return HidppMsg(featIdx, fb shr 4, params)
-    }
 
     private fun swFunc(function: Int): Byte = ((function shl 4) or SW_ID).toByte()
 
     private fun Int.unsigned(): Int = this and 0xFFFF
 
+    @Suppress("FunctionName")
+    private interface SpotlightBleLib : Library {
+        fun spotlight_ble_init()
+        fun spotlight_ble_is_connected(): Boolean
+        fun spotlight_ble_is_ready(): Boolean
+        fun spotlight_ble_vibrate(duration100ms: Byte): Boolean
+        fun spotlight_ble_cleanup()
+    }
+
     companion object {
+        private val bleLib: SpotlightBleLib? by lazy {
+            try {
+                val arch = System.getProperty("os.arch")
+                val resPath = "/darwin-$arch/libspotlightble.dylib"
+                val stream = SpotlightManager::class.java.getResourceAsStream(resPath) ?: return@lazy null
+                val tmp = File.createTempFile("libspotlightble", ".dylib")
+                tmp.deleteOnExit()
+                stream.use { input -> tmp.outputStream().use { output -> input.copyTo(output) } }
+                Native.load(tmp.absolutePath, SpotlightBleLib::class.java)
+            } catch (_: Exception) {
+                null
+            }
+        }
+
         private const val LOGITECH_VENDOR = 0x046d
-        private val SPOTLIGHT_PRODUCTS = setOf(0xc53e, 0xb503)
         private const val USB_PRODUCT = 0xc53e
         private const val BT_PRODUCT = 0xb503
         private const val VENDOR_PAGE_MIN = 0xFF00
@@ -242,11 +343,20 @@ class SpotlightManager(
         private val ERROR_FEATURE: Byte = 0xFF.toByte()
 
         private const val DEV_WIRELESS: Byte = 0x01
-        private val DEV_CORDED: Byte = 0xFF.toByte()
 
         private const val CID_NEXT = 0x00D9
         private const val CID_BACK = 0x00DB
 
-        private const val SW_ID = 0x01
+        private const val SW_ID = 0x07
+
+        private fun parseHidpp(buf: ByteArray, n: Int): HidppMsg? {
+            val off = if (buf[0] == REPORT_SHORT || buf[0] == REPORT_LONG) 1 else 0
+            if (n - off < 3) return null
+            val featIdx = buf[off + 1]
+            val fb = buf[off + 2].toInt() and 0xFF
+            val paramStart = off + 3
+            val params = if (n > paramStart) buf.copyOfRange(paramStart, n) else ByteArray(0)
+            return HidppMsg(featIdx, fb shr 4, params)
+        }
     }
 }

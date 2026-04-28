@@ -62,8 +62,10 @@ class NativeHidMonitor(
 
                 val matchCB = object : IOHIDDeviceCB {
                     override fun callback(ctx: Pointer?, ret: Int, sender: Pointer?, device: Pointer?) {
-                        deviceConnected = true
-                        onConnected(true)
+                        if (!deviceConnected) {
+                            deviceConnected = true
+                            onConnected(true)
+                        }
                     }
                 }
                 matchCallbackRef = matchCB
@@ -85,14 +87,18 @@ class NativeHidMonitor(
                 io.IOHIDManagerScheduleWithRunLoop(manager, rl, defaultMode)
                 io.IOHIDManagerOpen(manager, 0)
 
-                // CGEventTap to catch keyboard events synthesized by Logi Options+
+                var tapPointer: Pointer? = null
+
                 val tapCB = object : CGEventTapCB {
                     override fun callback(proxy: Pointer?, type: Int, event: Pointer?, userInfo: Pointer?): Pointer? {
+                        if (type < 0) {
+                            tapPointer?.let { cg.CGEventTapEnable(it, true) }
+                            return event
+                        }
                         if (event == null || !deviceConnected) return event
                         if (type != CG_EVENT_KEY_DOWN) return event
                         val sourcePid = cg.CGEventGetIntegerValueField(event, CG_EVENT_SOURCE_UNIX_PID)
                         val keyCode = cg.CGEventGetIntegerValueField(event, CG_KEYBOARD_EVENT_KEYCODE)
-                        println("[NativeHID] keyDown: keyCode=$keyCode sourcePid=$sourcePid")
                         if (sourcePid > 0) {
                             when (keyCode.toInt()) {
                                 KEY_RIGHT_ARROW, KEY_PAGE_DOWN -> onInput(KEYBOARD_PAGE, KEY_RIGHT_USAGE, 1L)
@@ -107,15 +113,13 @@ class NativeHidMonitor(
                 val eventMask = (1L shl CG_EVENT_KEY_DOWN)
                 val tap = cg.CGEventTapCreate(
                     1, 0, 1, eventMask, tapCB, Pointer.NULL
-                ) // kCGSessionEventTap=1, kCGHeadInsertEventTap=0, kCGEventTapOptionListenOnly=1
+                )
+                tapPointer = tap
 
                 if (tap != null) {
                     val rlSrc = cf.CFMachPortCreateRunLoopSource(Pointer.NULL, tap, 0)
                     cf.CFRunLoopAddSource(rl, rlSrc, defaultMode)
                     cg.CGEventTapEnable(tap, true)
-                    println("[NativeHID] CGEventTap installed")
-                } else {
-                    println("[NativeHID] CGEventTapCreate returned null — keyboard monitoring unavailable")
                 }
 
                 isRunning = true
@@ -220,13 +224,11 @@ class NativeHidMonitor(
         private const val CG_KEYBOARD_EVENT_KEYCODE = 9
         private const val CG_EVENT_SOURCE_UNIX_PID = 41
 
-        // macOS virtual keycodes
         private const val KEY_RIGHT_ARROW = 124
         private const val KEY_LEFT_ARROW = 123
         private const val KEY_PAGE_DOWN = 121
         private const val KEY_PAGE_UP = 116
 
-        // HID keyboard usage page values forwarded to SpotlightManager
         private const val KEYBOARD_PAGE = 0x07
         private const val KEY_RIGHT_USAGE = 0x4F
         private const val KEY_LEFT_USAGE = 0x50

@@ -24,6 +24,8 @@ import com.woutwerkman.pa.platform.PlatformFileSystem
 import com.woutwerkman.pa.platform.SpotlightManager
 import com.woutwerkman.pa.presentation.PresentationEngine
 import com.woutwerkman.pa.presentation.PresentationEvent
+import com.woutwerkman.pa.presentation.PresentationState
+import com.woutwerkman.pa.presentation.TimingAlerts
 import com.woutwerkman.pa.repository.AppSettings
 import com.woutwerkman.pa.repository.ProfileRepository
 import com.woutwerkman.pa.ui.expanded.ExpandedView
@@ -77,6 +79,8 @@ fun main() {
         spotlightManager.start()
         onDispose { spotlightManager.stop() }
     }
+
+    SpotlightTimingAlerts(engine, spotlightManager)
 
     AppTray(
         trayIcon = trayIcon,
@@ -175,7 +179,7 @@ private fun ForwardEventsToMobile(
 private fun HandleIncomingBleMessages(
     engine: PresentationEngine,
     bleService: DesktopBleService,
-    state: com.woutwerkman.pa.presentation.PresentationState,
+    state: PresentationState,
 ) {
     val currentState by rememberUpdatedState(state)
     LaunchedEffect(bleService) {
@@ -211,9 +215,19 @@ private fun AutoReconnect(bleService: DesktopBleService) {
 }
 
 @Composable
+private fun SpotlightTimingAlerts(
+    engine: PresentationEngine,
+    spotlightManager: SpotlightManager,
+) {
+    LaunchedEffect(spotlightManager) {
+        TimingAlerts(engine.state, spotlightManager::vibrate).run()
+    }
+}
+
+@Composable
 private fun ApplicationScope.AppTray(
     trayIcon: Painter,
-    state: com.woutwerkman.pa.presentation.PresentationState,
+    state: PresentationState,
     showMinified: Boolean,
     spotlightConnected: Boolean,
     onToggleMinified: () -> Unit,
@@ -250,7 +264,7 @@ private fun ApplicationScope.AppTray(
 @OptIn(ExperimentalComposeUiApi::class, ExperimentalFoundationApi::class)
 @Composable
 private fun MinifiedWindow(
-    state: com.woutwerkman.pa.presentation.PresentationState,
+    state: PresentationState,
     engine: PresentationEngine,
     onHide: () -> Unit,
     onExpand: () -> Unit,

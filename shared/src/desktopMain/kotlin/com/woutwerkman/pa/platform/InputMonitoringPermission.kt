@@ -7,12 +7,8 @@ object InputMonitoringPermission {
         return try {
             val ioKit = NativeLibrary.getInstance("IOKit")
             val fn = ioKit.getFunction("IOHIDRequestAccess")
-            val result = fn.invokeInt(arrayOf(1)) // kIOHIDRequestTypeListenEvent
-            val processPath = ProcessHandle.current().info().command().orElse("unknown")
-            println("[InputMonitoring] IOHIDRequestAccess(ListenEvent) = $result, process = $processPath")
-            result != 0
-        } catch (t: Throwable) {
-            println("[InputMonitoring] Failed: ${t::class.simpleName}: ${t.message}")
+            fn.invokeInt(arrayOf(1)) != 0
+        } catch (_: Throwable) {
             false
         }
     }
