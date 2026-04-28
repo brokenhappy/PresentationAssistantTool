@@ -149,8 +149,10 @@ private fun LoadLastProfile(engine: PresentationEngine, appSettings: AppSettings
 
 @Composable
 private fun PersistProfilePath(engine: PresentationEngine, appSettings: AppSettings) {
-    LaunchedEffect(engine.profilePath) {
-        appSettings.setLastProfilePath(engine.profilePath)
+    LaunchedEffect(Unit) {
+        engine.profilePath.collect { path ->
+            appSettings.setLastProfilePath(path)
+        }
     }
 }
 

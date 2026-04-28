@@ -28,8 +28,8 @@ class PresentationEngine(
     private var timerJob: Job? = null
     private var bulletStartTime: Long = 0L
     private var presentationStartTime: Long = 0L
-    var profilePath: String? = null
-        private set
+    private val _profilePath = MutableStateFlow<String?>(null)
+    val profilePath: StateFlow<String?> = _profilePath.asStateFlow()
 
     fun onEvent(event: PresentationEvent) {
         when (event) {
@@ -46,7 +46,7 @@ class PresentationEngine(
     private fun loadProfile(filePath: String) {
         scope.launch {
             val data = repository.loadOrCreateProfileData(filePath)
-            profilePath = filePath
+            _profilePath.value = filePath
             _state.update {
                 PresentationState(
                     profile = data.profile,
@@ -60,7 +60,7 @@ class PresentationEngine(
     private fun closeProfile() {
         timerJob?.cancel()
         timerJob = null
-        profilePath = null
+        _profilePath.value = null
         _state.value = PresentationState()
         scope.launch { _appliedEvents.emit(PresentationEvent.CloseProfile) }
     }
