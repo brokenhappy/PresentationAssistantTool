@@ -84,6 +84,12 @@ fun main() {
 
         SpotlightTimingAlerts(engine, spotlightManager, bleService)
 
+        LaunchedEffect(engine) {
+            engine.error.collect { message ->
+                println("PresentationAssistant error: $message")
+            }
+        }
+
         AppTray(
             trayIcon = trayIcon,
             state = state,

@@ -13,7 +13,10 @@ import org.hid4java.HidDevice
 import org.hid4java.HidManager
 import org.hid4java.HidServices
 import org.hid4java.HidServicesSpecification
+import org.slf4j.LoggerFactory
 import java.io.File
+
+private val log = LoggerFactory.getLogger(SpotlightManager::class.java)
 
 class SpotlightManager(
     private val scope: CoroutineScope,
@@ -39,7 +42,8 @@ class SpotlightManager(
             val spec = HidServicesSpecification()
             spec.setAutoStart(false)
             hidServices = HidManager.getHidServices(spec).also { it.start() }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            log.warn("Failed to initialize HID services", e)
             return
         }
         pollJob = scope.launch(Dispatchers.IO) {
@@ -108,7 +112,8 @@ class SpotlightManager(
                     return true
                 }
                 candidate.close()
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                log.debug("Spotlight USB probe failed for candidate", e)
                 try { candidate.close() } catch (_: Exception) {}
             }
         }
@@ -148,7 +153,9 @@ class SpotlightManager(
             val lib = bleLib ?: return
             lib.spotlight_ble_init()
             btBleActive = true
-        } catch (_: Exception) {}
+        } catch (e: Exception) {
+            log.warn("Failed to initialize Spotlight BLE", e)
+        }
     }
 
     private fun cleanupBtBle() {
@@ -201,7 +208,7 @@ class SpotlightManager(
         val length = (duration.inWholeMilliseconds / 100).coerceIn(1, 10)
         if (btBleActive) {
             withContext(Dispatchers.IO) {
-                try { bleLib?.spotlight_ble_vibrate(length.toByte()) } catch (_: Exception) {}
+                try { bleLib?.spotlight_ble_vibrate(length.toByte()) } catch (e: Exception) { log.debug("BLE vibrate failed", e) }
             }
             delay(duration)
             return
@@ -216,7 +223,7 @@ class SpotlightManager(
                 params[2] = 0x80.toByte()
                 val msg = byteArrayOf(activeDevIdx, pcIdx, swFunc(1)) + params
                 ch.write(msg, 20, REPORT_LONG)
-            } catch (_: Exception) {}
+            } catch (e: Exception) { log.debug("USB vibrate failed", e) }
         }
         delay(duration)
     }
@@ -252,7 +259,9 @@ class SpotlightManager(
                     prevNext = nextNow
                     prevBack = backNow
                 }
-            } catch (_: Exception) {}
+            } catch (e: Exception) {
+                log.info("Spotlight read loop ended: {}", e.message)
+            }
             handleDisconnect()
         }
     }

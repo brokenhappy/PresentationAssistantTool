@@ -7,8 +7,11 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlin.coroutines.coroutineContext
 import kotlin.time.Duration.Companion.milliseconds
+import org.slf4j.LoggerFactory
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
+
+private val log = LoggerFactory.getLogger(DesktopBleService::class.java)
 
 @OptIn(ExperimentalUuidApi::class)
 class DesktopBleService(
@@ -75,7 +78,8 @@ class DesktopBleService(
                     // Kable's default WithoutResponse checks for property bit 0x04, which isn't set, causing silent failure.
                     p.write(stateChar, chunk, WriteType.WithResponse)
                 }
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                log.warn("Write failed for device {}", deviceId, e)
                 handleDisconnect(deviceId)
             }
         }
@@ -116,7 +120,8 @@ class DesktopBleService(
                 _error.value = BleError.ScanTimeout(targetDeviceId)
             } catch (_: CancellationException) {
                 throw CancellationException()
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                log.warn("BLE scan failed", e)
                 _error.value = BleError.BluetoothUnavailable
             } finally {
                 updateConnectionState()
@@ -177,7 +182,8 @@ class DesktopBleService(
                 }
             } catch (_: CancellationException) {
                 throw CancellationException()
-            } catch (_: Exception) {
+            } catch (e: Exception) {
+                log.debug("Connection attempt failed, retrying", e)
                 try { p.disconnect() } catch (_: Exception) {}
                 delay(1_000)
             }
@@ -236,11 +242,15 @@ class DesktopBleService(
                         if (message != null) {
                             _incomingMessages.emit(message)
                         }
-                    } catch (_: Exception) {}
+                    } catch (e: Exception) {
+                        log.debug("Failed to process BLE message from {}", deviceId, e)
+                    }
                 }
             } catch (_: CancellationException) {
                 throw CancellationException()
-            } catch (_: Exception) {}
+            } catch (e: Exception) {
+                log.info("BLE observation ended for {}: {}", deviceId, e.message)
+            }
             handleDisconnect(deviceId)
         }
     }

@@ -25,6 +25,9 @@ class PresentationEngine(
     private val _appliedEvents = MutableSharedFlow<PresentationEvent>()
     val appliedEvents: SharedFlow<PresentationEvent> = _appliedEvents.asSharedFlow()
 
+    private val _error = MutableSharedFlow<String>()
+    val error: SharedFlow<String> = _error.asSharedFlow()
+
     private var timerJob: Job? = null
     private var bulletStartTime: Long = 0L
     private var presentationStartTime: Long = 0L
@@ -45,15 +48,19 @@ class PresentationEngine(
 
     private fun loadProfile(filePath: String) {
         scope.launch {
-            val data = repository.loadOrCreateProfileData(filePath)
-            _profilePath.value = filePath
-            _state.update {
-                PresentationState(
-                    profile = data.profile,
-                    runs = data.runs,
-                )
+            try {
+                val data = repository.loadOrCreateProfileData(filePath)
+                _profilePath.value = filePath
+                _state.update {
+                    PresentationState(
+                        profile = data.profile,
+                        runs = data.runs,
+                    )
+                }
+                _appliedEvents.emit(PresentationEvent.LoadProfile(filePath))
+            } catch (e: Exception) {
+                _error.emit("Failed to load profile: ${e.message}")
             }
-            _appliedEvents.emit(PresentationEvent.LoadProfile(filePath))
         }
     }
 
@@ -160,9 +167,13 @@ class PresentationEngine(
                 else run
             }
             _state.update { it.copy(runs = updatedRuns) }
-            repository.saveProfileData(
-                com.woutwerkman.pa.model.ProfileData(profile = profile, runs = updatedRuns)
-            )
+            try {
+                repository.saveProfileData(
+                    com.woutwerkman.pa.model.ProfileData(profile = profile, runs = updatedRuns)
+                )
+            } catch (e: Exception) {
+                _error.emit("Failed to save run data: ${e.message}")
+            }
             _appliedEvents.emit(PresentationEvent.ToggleRunInclusion(runId))
         }
     }
@@ -181,9 +192,13 @@ class PresentationEngine(
                 bulletPointDurations = durations,
             )
             val updatedRuns = current.runs + run
-            repository.saveProfileData(
-                com.woutwerkman.pa.model.ProfileData(profile = profile, runs = updatedRuns)
-            )
+            try {
+                repository.saveProfileData(
+                    com.woutwerkman.pa.model.ProfileData(profile = profile, runs = updatedRuns)
+                )
+            } catch (e: Exception) {
+                _error.emit("Failed to save run data: ${e.message}")
+            }
 
             _state.update {
                 it.copy(
