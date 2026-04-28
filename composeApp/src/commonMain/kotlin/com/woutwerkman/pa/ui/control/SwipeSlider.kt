@@ -22,7 +22,6 @@ fun SwipeSlider(
     onSwipeLeft: () -> Unit,
 ) {
     var offsetX by remember { mutableStateOf(0f) }
-    var hasTriggered by remember { mutableStateOf(false) }
 
     Box(
         modifier = Modifier
@@ -34,19 +33,13 @@ fun SwipeSlider(
                     orientation = Orientation.Horizontal,
                     state = rememberDraggableState { delta ->
                         offsetX += delta
-                        if (!hasTriggered) {
-                            if (offsetX > SWIPE_THRESHOLD) {
-                                hasTriggered = true
-                                onSwipeRight()
-                            } else if (offsetX < -SWIPE_THRESHOLD) {
-                                hasTriggered = true
-                                onSwipeLeft()
-                            }
-                        }
                     },
                     onDragStopped = {
+                        when {
+                            offsetX > SWIPE_THRESHOLD -> onSwipeRight()
+                            offsetX < -SWIPE_THRESHOLD -> onSwipeLeft()
+                        }
                         offsetX = 0f
-                        hasTriggered = false
                     },
                 )
             ),
