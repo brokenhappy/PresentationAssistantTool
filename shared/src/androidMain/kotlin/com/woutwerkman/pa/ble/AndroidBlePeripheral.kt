@@ -12,6 +12,8 @@ import android.content.IntentFilter
 import android.os.ParcelUuid
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.util.UUID
 
 @SuppressLint("MissingPermission")
@@ -47,6 +49,7 @@ class AndroidBlePeripheral(
     private val assembler = MessageAssembler()
     private var preparedWriteBuffer = ByteArray(0)
     private var heartbeatJob: Job? = null
+    private val writeMutex = Mutex()
 
     private val bluetoothStateReceiver = object : BroadcastReceiver() {
         override fun onReceive(ctx: Context, intent: Intent) {
@@ -306,11 +309,11 @@ class AndroidBlePeripheral(
     }
 
     @Suppress("DEPRECATION")
-    override suspend fun sendMessage(message: BleMessage) {
-        val device = connectedDevice ?: return
-        val server = gattServer ?: return
-        val service = server.getService(serviceUuid) ?: return
-        val char = service.getCharacteristic(commandCharUuid) ?: return
+    override suspend fun sendMessage(message: BleMessage) = writeMutex.withLock {
+        val device = connectedDevice ?: return@withLock
+        val server = gattServer ?: return@withLock
+        val service = server.getService(serviceUuid) ?: return@withLock
+        val char = service.getCharacteristic(commandCharUuid) ?: return@withLock
 
         val chunks = message.encodeChunked()
         for (chunk in chunks) {

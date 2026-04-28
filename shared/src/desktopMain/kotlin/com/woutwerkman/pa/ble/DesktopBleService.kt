@@ -3,6 +3,8 @@ package com.woutwerkman.pa.ble
 import com.juul.kable.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlin.coroutines.coroutineContext
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.uuid.ExperimentalUuidApi
@@ -49,6 +51,8 @@ class DesktopBleService(
 
     private val assemblers = mutableMapOf<String, MessageAssembler>()
     private val lastHeartbeat = mutableMapOf<String, Long>()
+    // Serializes multi-chunk writes so concurrent sendMessage calls don't interleave chunks.
+    private val writeMutex = Mutex()
 
     override suspend fun startAdvertisingOrScanning() {
         startAutoReconnect()
@@ -61,7 +65,7 @@ class DesktopBleService(
         reconnectJob = null
     }
 
-    override suspend fun sendMessage(message: BleMessage) {
+    override suspend fun sendMessage(message: BleMessage) = writeMutex.withLock {
         val chunks = message.encodeChunked()
         val snapshot = synchronized(peripherals) { peripherals.toMap() }
         for ((deviceId, p) in snapshot) {

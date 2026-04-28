@@ -6,6 +6,8 @@ import kotlinx.cinterop.addressOf
 import kotlinx.cinterop.usePinned
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import platform.CoreBluetooth.*
 import platform.Foundation.NSData
 import platform.Foundation.create
@@ -35,6 +37,7 @@ class IosBlePeripheral(
     private var connectedCentral: CBCentral? = null
     private var commandCharacteristic: CBMutableCharacteristic? = null
     private var heartbeatJob: Job? = null
+    private val writeMutex = Mutex()
 
     private val assembler = MessageAssembler()
     private val delegate = PeripheralDelegate()
@@ -49,10 +52,10 @@ class IosBlePeripheral(
         peripheralManager = null
     }
 
-    override suspend fun sendMessage(message: BleMessage) {
-        val central = connectedCentral ?: return
-        val char = commandCharacteristic ?: return
-        val pm = peripheralManager ?: return
+    override suspend fun sendMessage(message: BleMessage) = writeMutex.withLock {
+        val central = connectedCentral ?: return@withLock
+        val char = commandCharacteristic ?: return@withLock
+        val pm = peripheralManager ?: return@withLock
 
         val chunks = message.encodeChunked()
         for (chunk in chunks) {
