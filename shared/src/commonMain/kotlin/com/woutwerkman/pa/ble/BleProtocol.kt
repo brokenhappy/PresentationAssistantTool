@@ -37,7 +37,10 @@ fun decodeBleMessage(bytes: ByteArray): BleMessage =
     bleJson.decodeFromString(BleMessage.serializer(), bytes.decodeToString())
 
 fun PresentationState.forBleSync(): PresentationState =
-    if (runs.isEmpty()) this else copy(runs = emptyList())
+    if (runs.isEmpty()) this else copy(
+        runs = emptyList(),
+        bulletAverages = stats.averageDurations,
+    )
 
 const val HEARTBEAT_BYTE: Byte = 0x04
 

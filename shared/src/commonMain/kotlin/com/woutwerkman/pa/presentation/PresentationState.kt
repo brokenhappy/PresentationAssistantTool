@@ -20,6 +20,7 @@ data class PresentationState(
     val elapsed: Duration = Duration.ZERO,
     val currentBulletElapsed: Duration = Duration.ZERO,
     val currentRunDurations: Map<String, Duration> = emptyMap(),
+    val bulletAverages: Map<String, Duration> = emptyMap(),
     @Transient val bulletStartTime: Long = 0L,
     @Transient val presentationStartTime: Long = 0L,
 ) {
@@ -49,7 +50,8 @@ data class PresentationState(
 
     val bulletCountdown: Duration?
         get() {
-            val avg = averageForCurrentBullet ?: return null
+            val key = currentBulletKey ?: return null
+            val avg = averageForCurrentBullet ?: bulletAverages[key] ?: return null
             if (avg == Duration.ZERO) return null
             return avg - currentBulletElapsed
         }
