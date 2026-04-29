@@ -31,16 +31,23 @@ fun SpeakerNotesView(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Column {
                 TimerDisplay(
-                    elapsed = state.currentBulletElapsed,
+                    elapsed = state.elapsed,
                     style = MaterialTheme.typography.headlineMedium,
                 )
-                Spacer(Modifier.width(12.dp))
-                DeltaTimerDisplay(
-                    delta = state.globalScheduleDelta,
-                    style = MaterialTheme.typography.titleMedium,
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    TimerDisplay(
+                        elapsed = state.currentBulletElapsed,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    DeltaTimerDisplay(
+                        delta = state.globalScheduleDelta,
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                }
             }
             Text(
                 text = "${state.currentBulletIndex + 1} / ${state.bulletCount}",
