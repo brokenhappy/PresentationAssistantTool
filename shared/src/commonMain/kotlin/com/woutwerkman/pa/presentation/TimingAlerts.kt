@@ -23,13 +23,20 @@ suspend fun runTimingAlerts(
         .collectLatest { bullet ->
             if (bullet == null) return@collectLatest
 
-            val warningBefore = (bullet.average - WARNING_BEFORE).coerceAtLeast(Duration.ZERO)
-            delay(warningBefore)
-            vibrate(SHORT_VIBRATION)
-            vibrate(SHORT_VIBRATION)
+            val warningAt = (bullet.average - WARNING_BEFORE).coerceAtLeast(Duration.ZERO)
+            val alreadyElapsed = stateFlow.value.currentBulletElapsed
 
-            delay(bullet.average - warningBefore)
-            vibrate(LONG_VIBRATION)
+            if (alreadyElapsed <= warningAt) {
+                delay(warningAt - alreadyElapsed)
+                vibrate(SHORT_VIBRATION)
+                vibrate(SHORT_VIBRATION)
+            }
+
+            val overtimeDelay = (bullet.average - maxOf(alreadyElapsed, warningAt)).coerceAtLeast(Duration.ZERO)
+            if (overtimeDelay > Duration.ZERO) {
+                delay(overtimeDelay)
+                vibrate(LONG_VIBRATION)
+            }
         }
 }
 

@@ -27,7 +27,11 @@ class TimingAlertsTest {
         bulletPoints = mapOf("a" to "First", "b" to "Second"),
     )
 
-    private fun stateWithAverage(average: Duration, bulletIndex: Int = 0): PresentationState {
+    private fun stateWithAverage(
+        average: Duration,
+        bulletIndex: Int = 0,
+        currentBulletElapsed: Duration = Duration.ZERO,
+    ): PresentationState {
         val run = RunRecord(
             id = "r1",
             timestamp = 1000L,
@@ -38,6 +42,7 @@ class TimingAlertsTest {
             runs = listOf(run),
             isActive = true,
             currentBulletIndex = bulletIndex,
+            currentBulletElapsed = currentBulletElapsed,
         )
     }
 
@@ -194,6 +199,68 @@ class TimingAlertsTest {
 
         advanceTimeBy(30_000)
         runCurrent()
+        assertEquals(0, vibrations.size)
+
+        job.cancel()
+    }
+
+    @Test
+    fun accumulatedTimeReducesWarningDelay() = runTest {
+        val state = MutableStateFlow(inactive)
+        val vibrations = mutableListOf<Pair<Long, Duration>>()
+
+        val job = launch {
+            runTimingAlerts(state) { duration ->
+                vibrations.add(currentTime to duration)
+            }
+        }
+
+        state.value = stateWithAverage(20.seconds, currentBulletElapsed = 5.seconds)
+        advanceTimeBy(5_000)
+        runCurrent()
+
+        assertEquals(2, vibrations.size)
+        assertEquals(5_000, vibrations[0].first)
+        assertEquals(SHORT_VIBRATION, vibrations[0].second)
+
+        job.cancel()
+    }
+
+    @Test
+    fun accumulatedTimePastWarningSkipsWarning() = runTest {
+        val state = MutableStateFlow(inactive)
+        val vibrations = mutableListOf<Pair<Long, Duration>>()
+
+        val job = launch {
+            runTimingAlerts(state) { duration ->
+                vibrations.add(currentTime to duration)
+            }
+        }
+
+        state.value = stateWithAverage(20.seconds, currentBulletElapsed = 15.seconds)
+        advanceTimeBy(5_000)
+        runCurrent()
+
+        assertEquals(1, vibrations.size)
+        assertEquals(5_000, vibrations[0].first)
+        assertEquals(LONG_VIBRATION, vibrations[0].second)
+
+        job.cancel()
+    }
+
+    @Test
+    fun accumulatedTimePastAverageSkipsAll() = runTest {
+        val state = MutableStateFlow(inactive)
+        val vibrations = mutableListOf<Duration>()
+
+        val job = launch {
+            runTimingAlerts(state) { vibrations.add(it) }
+        }
+
+        state.value = stateWithAverage(20.seconds, currentBulletElapsed = 25.seconds)
+        advanceTimeBy(30_000)
+        runCurrent()
+
         assertEquals(0, vibrations.size)
 
         job.cancel()
