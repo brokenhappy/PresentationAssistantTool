@@ -95,7 +95,6 @@ fun main() {
             state = state,
             showMinified = showMinified,
             connectedPeers = connectedPeers,
-            spotlightConnected = spotlightConnected,
             onToggleMinified = { showMinified = !showMinified },
             onShowExpanded = { showExpanded = true },
             onShowDevices = { showConnection = true },
@@ -253,7 +252,6 @@ private fun ApplicationScope.AppTray(
     state: PresentationState,
     showMinified: Boolean,
     connectedPeers: List<PairedPeer>,
-    spotlightConnected: Boolean,
     onToggleMinified: () -> Unit,
     onShowExpanded: () -> Unit,
     onShowDevices: () -> Unit,
@@ -270,11 +268,6 @@ private fun ApplicationScope.AppTray(
             Item("Expanded View", onClick = onShowExpanded)
             Item("Devices...", onClick = onShowDevices)
             Separator()
-            Item(
-                "Spotlight: ${if (spotlightConnected) "Connected" else "Not Found"}",
-                enabled = false,
-                onClick = {},
-            )
             for (peer in connectedPeers) {
                 Item(
                     "${peer.name}: Connected",
@@ -282,7 +275,7 @@ private fun ApplicationScope.AppTray(
                     onClick = {},
                 )
             }
-            if (!spotlightConnected && connectedPeers.isEmpty()) {
+            if (connectedPeers.isEmpty()) {
                 Item("No devices connected", enabled = false, onClick = {})
             }
             Separator()
