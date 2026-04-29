@@ -28,6 +28,12 @@ kotlin {
             implementation(libs.qrcode.kotlin)
         }
 
+        commonTest.dependencies {
+            implementation(kotlin("test"))
+            @OptIn(org.jetbrains.compose.ExperimentalComposeLibrary::class)
+            implementation(compose.uiTest)
+        }
+
         androidMain.dependencies {
             implementation("androidx.activity:activity-compose:1.9.3")
         }
@@ -36,6 +42,12 @@ kotlin {
             dependencies {
                 implementation(compose.desktop.currentOs)
                 implementation(libs.kotlinx.coroutines.swing)
+            }
+        }
+
+        val desktopTest by getting {
+            dependencies {
+                implementation(compose.desktop.currentOs)
             }
         }
     }
