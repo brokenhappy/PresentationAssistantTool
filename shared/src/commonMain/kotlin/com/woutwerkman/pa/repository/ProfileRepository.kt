@@ -2,10 +2,10 @@ package com.woutwerkman.pa.repository
 
 import com.woutwerkman.pa.model.PresentationProfile
 import com.woutwerkman.pa.model.ProfileData
-import com.woutwerkman.pa.platform.PlatformFileSystem
+import com.woutwerkman.pa.platform.FileSystem
 import kotlinx.serialization.json.Json
 
-class ProfileRepository(private val fileSystem: PlatformFileSystem) {
+class ProfileRepository(private val fileSystem: FileSystem) {
 
     private val json = Json {
         ignoreUnknownKeys = true

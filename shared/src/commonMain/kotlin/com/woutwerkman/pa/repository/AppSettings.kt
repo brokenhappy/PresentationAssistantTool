@@ -1,6 +1,6 @@
 package com.woutwerkman.pa.repository
 
-import com.woutwerkman.pa.platform.PlatformFileSystem
+import com.woutwerkman.pa.platform.FileSystem
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
@@ -9,7 +9,7 @@ data class AppSettingsData(
     val lastProfilePath: String? = null,
 )
 
-class AppSettings(private val fileSystem: PlatformFileSystem) {
+class AppSettings(private val fileSystem: FileSystem) {
 
     private val json = Json { ignoreUnknownKeys = true; prettyPrint = true }
     private val path get() = "${fileSystem.appDataDir}/settings.json"

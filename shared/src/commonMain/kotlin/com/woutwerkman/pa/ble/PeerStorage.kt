@@ -1,6 +1,6 @@
 package com.woutwerkman.pa.ble
 
-import com.woutwerkman.pa.platform.PlatformFileSystem
+import com.woutwerkman.pa.platform.FileSystem
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
@@ -9,7 +9,7 @@ data class PersistedPeers(
     val peers: List<PairedPeer> = emptyList(),
 )
 
-class PeerStorage(private val fileSystem: PlatformFileSystem) {
+class PeerStorage(private val fileSystem: FileSystem) {
 
     private val json = Json { ignoreUnknownKeys = true; prettyPrint = true }
     private val path get() = "${fileSystem.appDataDir}/connections/peers.json"

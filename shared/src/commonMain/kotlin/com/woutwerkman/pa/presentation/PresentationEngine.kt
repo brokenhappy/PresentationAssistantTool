@@ -19,6 +19,8 @@ import kotlin.time.Duration.Companion.milliseconds
 class PresentationEngine(
     private val repository: ProfileRepository,
     private val scope: CoroutineScope,
+    private val clock: () -> Long = { com.woutwerkman.pa.platform.currentTimeMs() },
+    private val idGenerator: () -> String = { defaultGenerateRunId() },
 ) {
     private val _state = MutableStateFlow(PresentationState())
     val state: StateFlow<PresentationState> = _state.asStateFlow()
@@ -77,7 +79,7 @@ class PresentationEngine(
         val current = _state.value
         if (current.profile == null || current.isActive) return
 
-        presentationStartTime = currentTimeMs()
+        presentationStartTime = clock()
         bulletStartTime = presentationStartTime
 
         _state.update {
@@ -102,7 +104,7 @@ class PresentationEngine(
         }
 
         val key = current.currentBulletKey ?: return
-        val visitDuration = (currentTimeMs() - bulletStartTime).milliseconds
+        val visitDuration = (clock() - bulletStartTime).milliseconds
         val accumulated = (current.currentRunDurations[key] ?: Duration.ZERO) + visitDuration
         val updatedDurations = current.currentRunDurations + (key to accumulated)
 
@@ -115,7 +117,7 @@ class PresentationEngine(
         val nextKey = current.profile?.keyAt(nextIndex)
         val nextAccumulated = if (nextKey != null) updatedDurations[nextKey] ?: Duration.ZERO else Duration.ZERO
 
-        bulletStartTime = currentTimeMs()
+        bulletStartTime = clock()
         _state.update {
             it.copy(
                 currentBulletIndex = nextIndex,
@@ -131,7 +133,7 @@ class PresentationEngine(
         if (!current.isActive || index < 0 || index >= current.bulletCount) return
 
         val key = current.currentBulletKey
-        val visitDuration = (currentTimeMs() - bulletStartTime).milliseconds
+        val visitDuration = (clock() - bulletStartTime).milliseconds
         val updatedDurations = if (key != null) {
             val accumulated = (current.currentRunDurations[key] ?: Duration.ZERO) + visitDuration
             current.currentRunDurations + (key to accumulated)
@@ -142,7 +144,7 @@ class PresentationEngine(
         val targetKey = current.profile?.keyAt(index)
         val targetAccumulated = if (targetKey != null) updatedDurations[targetKey] ?: Duration.ZERO else Duration.ZERO
 
-        bulletStartTime = currentTimeMs()
+        bulletStartTime = clock()
         _state.update {
             it.copy(
                 currentBulletIndex = index,
@@ -188,8 +190,8 @@ class PresentationEngine(
             val profile = current.profile ?: return@launch
 
             val run = RunRecord(
-                id = generateRunId(),
-                timestamp = currentTimeMs(),
+                id = idGenerator(),
+                timestamp = clock(),
                 bulletPointDurations = durations,
             )
             val updatedRuns = current.runs + run
@@ -220,7 +222,7 @@ class PresentationEngine(
         timerJob = scope.launch {
             while (true) {
                 delay(100.milliseconds)
-                val now = currentTimeMs()
+                val now = clock()
                 _state.update {
                     val currentKey = it.currentBulletKey
                     val accumulated = if (currentKey != null) it.currentRunDurations[currentKey] ?: Duration.ZERO else Duration.ZERO
@@ -233,11 +235,9 @@ class PresentationEngine(
         }
     }
 
-    private fun currentTimeMs(): Long =
-        com.woutwerkman.pa.platform.currentTimeMs()
+}
 
-    private fun generateRunId(): String {
-        val chars = "abcdefghijklmnopqrstuvwxyz0123456789"
-        return (1..12).map { chars.random() }.joinToString("")
-    }
+private fun defaultGenerateRunId(): String {
+    val chars = "abcdefghijklmnopqrstuvwxyz0123456789"
+    return (1..12).map { chars.random() }.joinToString("")
 }
