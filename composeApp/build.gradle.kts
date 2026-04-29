@@ -108,7 +108,7 @@ compose.desktop {
                 org.jetbrains.compose.desktop.application.dsl.TargetFormat.Dmg
             )
             packageName = "Imprass"
-            packageVersion = "1.0.0"
+            packageVersion = "0.0.1"
             macOS {
                 bundleID = "com.woutwerkman.pa"
                 infoPlist {
