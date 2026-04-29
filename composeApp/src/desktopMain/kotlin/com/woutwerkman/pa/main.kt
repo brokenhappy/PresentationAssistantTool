@@ -95,7 +95,6 @@ fun main() {
             trayIcon = trayIcon,
             state = state,
             showMinified = showMinified,
-            connectedPeers = connectedPeers,
             onToggleMinified = { showMinified = !showMinified },
             onShowExpanded = { showExpanded = true },
             onShowDevices = { showConnection = true },
@@ -251,7 +250,6 @@ private fun ApplicationScope.AppTray(
     trayIcon: Painter,
     state: PresentationState,
     showMinified: Boolean,
-    connectedPeers: List<PairedPeer>,
     onToggleMinified: () -> Unit,
     onShowExpanded: () -> Unit,
     onShowDevices: () -> Unit,
@@ -267,17 +265,6 @@ private fun ApplicationScope.AppTray(
             )
             Item("Expanded View", onClick = onShowExpanded)
             Item("Devices...", onClick = onShowDevices)
-            Separator()
-            for (peer in connectedPeers) {
-                Item(
-                    "${peer.name}: Connected",
-                    enabled = false,
-                    onClick = {},
-                )
-            }
-            if (connectedPeers.isEmpty()) {
-                Item("No devices connected", enabled = false, onClick = {})
-            }
             Separator()
             if (state.profile != null) {
                 Item("Close Profile", onClick = onCloseProfile)
