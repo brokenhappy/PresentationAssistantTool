@@ -5,6 +5,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -30,17 +31,34 @@ fun SpeakerNotesView(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TimerDisplay(
-                elapsed = state.currentBulletElapsed,
-                style = MaterialTheme.typography.headlineMedium,
-            )
-            DeltaTimerDisplay(
-                delta = state.globalScheduleDelta,
-                style = MaterialTheme.typography.titleMedium,
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                TimerDisplay(
+                    elapsed = state.currentBulletElapsed,
+                    style = MaterialTheme.typography.headlineMedium,
+                )
+                Spacer(Modifier.width(12.dp))
+                DeltaTimerDisplay(
+                    delta = state.globalScheduleDelta,
+                    style = MaterialTheme.typography.titleMedium,
+                )
+            }
+            Text(
+                text = "${state.currentBulletIndex + 1} / ${state.bulletCount}",
+                style = MaterialTheme.typography.titleMedium.copy(fontFamily = FontFamily.Monospace),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(8.dp))
+
+        LinearProgressIndicator(
+            progress = { if (state.bulletCount > 0) (state.currentBulletIndex + 1).toFloat() / state.bulletCount else 0f },
+            modifier = Modifier.fillMaxWidth().height(3.dp),
+            color = MaterialTheme.colorScheme.primary,
+            trackColor = MaterialTheme.colorScheme.surfaceVariant,
+        )
+
+        Spacer(Modifier.height(12.dp))
 
         val prevText = if (state.currentBulletIndex > 0) {
             state.profile?.textAt(state.currentBulletIndex - 1)

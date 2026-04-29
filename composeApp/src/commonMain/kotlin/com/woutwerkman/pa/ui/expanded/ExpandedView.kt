@@ -1,21 +1,26 @@
 package com.woutwerkman.pa.ui.expanded
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.woutwerkman.pa.model.RunRecord
 import com.woutwerkman.pa.presentation.PresentationEvent
 import com.woutwerkman.pa.presentation.PresentationState
 import com.woutwerkman.pa.repository.BulletPointStats
+import com.woutwerkman.pa.ui.components.DeltaTimerDisplay
 import com.woutwerkman.pa.ui.components.TimerDisplay
 import com.woutwerkman.pa.ui.components.formatTimer
 import com.woutwerkman.pa.ui.components.formatTimestamp
@@ -69,17 +74,36 @@ fun ExpandedView(
 
 @Composable
 private fun ActiveHeader(state: PresentationState) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = state.profile?.title ?: "",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.weight(1f),
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = state.profile?.title ?: "",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                )
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    text = "Bullet ${state.currentBulletIndex + 1} of ${state.bulletCount}",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(horizontalAlignment = Alignment.End) {
+                TimerDisplay(elapsed = state.elapsed)
+                DeltaTimerDisplay(delta = state.globalScheduleDelta)
+            }
+        }
+        LinearProgressIndicator(
+            progress = { (state.currentBulletIndex + 1).toFloat() / state.bulletCount },
+            modifier = Modifier.fillMaxWidth().height(3.dp),
+            color = MaterialTheme.colorScheme.primary,
+            trackColor = MaterialTheme.colorScheme.surfaceVariant,
         )
-        TimerDisplay(elapsed = state.elapsed)
     }
 }
 
@@ -91,7 +115,7 @@ private fun StatsHeader(stats: BulletPointStats) {
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
         )
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(12.dp))
         if (stats.lastRunTotal == null) {
             Text(
                 "No runs recorded yet",
@@ -99,20 +123,41 @@ private fun StatsHeader(stats: BulletPointStats) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         } else {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                StatItem("Last run", formatTimer(stats.lastRunTotal!!))
-                StatItem("Average", formatTimer(stats.totalAverage))
-                StatItem("Last 3 avg", formatTimer(stats.totalLastThreeAverage))
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                StatCard("Last run", formatTimer(stats.lastRunTotal!!), Modifier.weight(1f))
+                StatCard("Average", formatTimer(stats.totalAverage), Modifier.weight(1f))
+                StatCard("Last 3 avg", formatTimer(stats.totalLastThreeAverage), Modifier.weight(1f))
             }
         }
     }
 }
 
 @Composable
-private fun StatItem(label: String, value: String) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(value, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+private fun StatCard(label: String, value: String, modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier,
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        shape = RoundedCornerShape(8.dp),
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                label,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                value,
+                style = MaterialTheme.typography.titleSmall.copy(fontFamily = FontFamily.Monospace),
+                fontWeight = FontWeight.Bold,
+            )
+        }
     }
 }
 
@@ -167,6 +212,7 @@ private fun BulletPointRow(
         }
     )
     val textAlpha = if (isPast) 0.4f else 1f
+    val accentColor = MaterialTheme.colorScheme.primary
 
     Surface(
         modifier = Modifier
@@ -175,9 +221,21 @@ private fun BulletPointRow(
         color = bgColor,
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+            modifier = Modifier.padding(vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            if (isCurrent) {
+                Box(
+                    modifier = Modifier
+                        .width(3.dp)
+                        .height(24.dp)
+                        .clip(RoundedCornerShape(topEnd = 2.dp, bottomEnd = 2.dp))
+                        .background(accentColor),
+                )
+                Spacer(Modifier.width(13.dp))
+            } else {
+                Spacer(Modifier.width(16.dp))
+            }
             Text(
                 text = "${index + 1}.",
                 style = MaterialTheme.typography.bodySmall,
@@ -238,14 +296,13 @@ private fun RunListItem(
         Spacer(Modifier.width(8.dp))
         Text(
             text = formatTimer(run.totalDuration),
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
             modifier = Modifier.weight(1f),
         )
         Text(
             text = formatTimestamp(run.timestamp),
-            style = MaterialTheme.typography.bodySmall,
+            style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }
-

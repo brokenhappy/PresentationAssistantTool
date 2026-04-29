@@ -5,6 +5,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -51,7 +52,15 @@ fun ControlView(
                 style = MaterialTheme.typography.titleMedium,
             )
 
-            Spacer(Modifier.height(32.dp))
+            Spacer(Modifier.height(8.dp))
+
+            Text(
+                text = "${state.currentBulletIndex + 1} / ${state.bulletCount}",
+                style = MaterialTheme.typography.labelLarge.copy(fontFamily = FontFamily.Monospace),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+
+            Spacer(Modifier.height(24.dp))
 
             Text(
                 text = state.currentBulletText ?: "",
@@ -64,6 +73,15 @@ fun ControlView(
             )
 
             Spacer(Modifier.weight(1f))
+
+            LinearProgressIndicator(
+                progress = { (state.currentBulletIndex + 1).toFloat() / state.bulletCount },
+                modifier = Modifier.fillMaxWidth().height(4.dp).padding(horizontal = 16.dp),
+                color = MaterialTheme.colorScheme.primary,
+                trackColor = MaterialTheme.colorScheme.surfaceVariant,
+            )
+
+            Spacer(Modifier.height(16.dp))
 
             SwipeSlider(
                 onSwipeRight = { onEvent(PresentationEvent.Advance) },

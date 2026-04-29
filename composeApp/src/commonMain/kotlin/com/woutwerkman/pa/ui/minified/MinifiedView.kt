@@ -6,6 +6,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.woutwerkman.pa.presentation.PresentationEvent
@@ -25,10 +27,22 @@ fun MinifiedView(
         modifier = modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.surface,
     ) {
-        when {
-            state.profile == null -> EmptyState()
-            state.isActive -> ActiveState(state, onExpand, onHide)
-            else -> IdleState(state, onEvent, onExpand, onHide)
+        Column {
+            Box(modifier = Modifier.weight(1f)) {
+                when {
+                    state.profile == null -> EmptyState()
+                    state.isActive -> ActiveState(state, onExpand, onHide)
+                    else -> IdleState(state, onEvent, onExpand, onHide)
+                }
+            }
+            if (state.isActive && state.bulletCount > 0) {
+                LinearProgressIndicator(
+                    progress = { (state.currentBulletIndex + 1).toFloat() / state.bulletCount },
+                    modifier = Modifier.fillMaxWidth().height(2.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                )
+            }
         }
     }
 }
@@ -59,28 +73,26 @@ private fun IdleState(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            text = state.profile?.textAt(0) ?: "",
+            text = state.profile?.title ?: "",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurface,
-            maxLines = 2,
+            maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
         )
         Spacer(Modifier.width(8.dp))
-        IconButton(onClick = { onEvent(PresentationEvent.Start) }) {
-            Box(
-                modifier = Modifier
-                    .size(32.dp)
-                    .background(MaterialTheme.colorScheme.secondary, shape = MaterialTheme.shapes.small),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text("▶", color = MaterialTheme.colorScheme.onSecondary, style = MaterialTheme.typography.bodySmall)
-            }
+        FilledTonalButton(
+            onClick = { onEvent(PresentationEvent.Start) },
+            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+            modifier = Modifier.height(28.dp),
+        ) {
+            Text("Start", style = MaterialTheme.typography.labelMedium)
         }
-        IconButton(onClick = onExpand) {
+        Spacer(Modifier.width(4.dp))
+        IconButton(onClick = onExpand, modifier = Modifier.size(32.dp)) {
             Text("⤢", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        IconButton(onClick = onHide) {
+        IconButton(onClick = onHide, modifier = Modifier.size(32.dp)) {
             Text("✕", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
@@ -100,25 +112,31 @@ private fun ActiveState(
             elapsed = state.currentBulletElapsed,
             style = MaterialTheme.typography.titleMedium,
         )
-        Spacer(Modifier.width(6.dp))
+        Spacer(Modifier.width(4.dp))
         DeltaTimerDisplay(
             delta = state.globalScheduleDelta,
             style = MaterialTheme.typography.bodySmall,
         )
-        Spacer(Modifier.width(12.dp))
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text = "${state.currentBulletIndex + 1}/${state.bulletCount}",
+            style = MaterialTheme.typography.labelMedium.copy(fontFamily = FontFamily.Monospace),
+            color = MaterialTheme.colorScheme.primary,
+        )
+        Spacer(Modifier.width(8.dp))
         Text(
             text = state.currentBulletText ?: "",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurface,
-            maxLines = 2,
+            maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
         )
-        Spacer(Modifier.width(8.dp))
-        IconButton(onClick = onExpand) {
+        Spacer(Modifier.width(4.dp))
+        IconButton(onClick = onExpand, modifier = Modifier.size(32.dp)) {
             Text("⤢", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        IconButton(onClick = onHide) {
+        IconButton(onClick = onHide, modifier = Modifier.size(32.dp)) {
             Text("✕", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }

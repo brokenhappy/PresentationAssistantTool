@@ -6,6 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import kotlin.time.Duration
 
 @Composable
@@ -17,7 +18,7 @@ fun TimerDisplay(
 ) {
     Text(
         text = formatTimer(elapsed),
-        style = style,
+        style = style.copy(fontFamily = FontFamily.Monospace),
         color = color,
         modifier = modifier,
     )
@@ -40,7 +41,7 @@ fun DeltaTimerDisplay(
     }
     Text(
         text = "$sign${formatTimer(abs)}",
-        style = style,
+        style = style.copy(fontFamily = FontFamily.Monospace),
         color = color,
         modifier = modifier,
     )
