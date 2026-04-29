@@ -7,7 +7,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.woutwerkman.pa.presentation.PresentationEvent
@@ -116,12 +115,6 @@ private fun ActiveState(
         DeltaTimerDisplay(
             delta = state.globalScheduleDelta,
             style = MaterialTheme.typography.bodySmall,
-        )
-        Spacer(Modifier.width(8.dp))
-        Text(
-            text = "${state.currentBulletIndex + 1}/${state.bulletCount}",
-            style = MaterialTheme.typography.labelMedium.copy(fontFamily = FontFamily.Monospace),
-            color = MaterialTheme.colorScheme.primary,
         )
         Spacer(Modifier.width(8.dp))
         Text(

@@ -98,7 +98,6 @@ class MinifiedViewTest {
         }
 
         onNodeWithText("Live demo").assertIsDisplayed()
-        onNodeWithText("2/3").assertIsDisplayed()
         onNode(hasText("0:05")).assertIsDisplayed()
     }
 
