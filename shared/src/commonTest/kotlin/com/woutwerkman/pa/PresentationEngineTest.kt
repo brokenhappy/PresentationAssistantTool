@@ -21,6 +21,7 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Instant
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class PresentationEngineTest {
@@ -44,12 +45,14 @@ class PresentationEngineTest {
 
     private var runIdCounter = 0
 
+    private fun TestScope.now() = Instant.fromEpochMilliseconds(currentTime)
+
     private fun TestScope.createEngine(fileSystem: InMemoryFileSystem = createFileSystem()): PresentationEngine {
         runIdCounter = 0
         return PresentationEngine(
             repository = ProfileRepository(fileSystem),
             scope = backgroundScope,
-            clock = { currentTime },
+            clock = { now() },
             idGenerator = { "run-${runIdCounter++}" },
         )
     }
@@ -107,7 +110,7 @@ class PresentationEngineTest {
         val engine = createEngine()
         loadAndStart(engine)
 
-        advanceTimeBy(5_000)
+        advanceTimeBy(5.seconds)
         engine.onEvent(PresentationEvent.Advance)
         runCurrent()
 
@@ -135,11 +138,11 @@ class PresentationEngineTest {
         val engine = createEngine()
         loadAndStart(engine)
 
-        advanceTimeBy(3_000)
+        advanceTimeBy(3.seconds)
         engine.onEvent(PresentationEvent.Advance)
         runCurrent()
 
-        advanceTimeBy(2_000)
+        advanceTimeBy(2.seconds)
         engine.onEvent(PresentationEvent.GoBack)
         runCurrent()
 
@@ -162,7 +165,7 @@ class PresentationEngineTest {
         val engine = createEngine()
         loadAndStart(engine)
 
-        advanceTimeBy(1_000)
+        advanceTimeBy(1.seconds)
         engine.onEvent(PresentationEvent.GoTo(2))
         runCurrent()
 
@@ -186,11 +189,11 @@ class PresentationEngineTest {
         val engine = createEngine()
         loadAndStart(engine)
 
-        advanceTimeBy(5_000)
+        advanceTimeBy(5.seconds)
         engine.onEvent(PresentationEvent.Advance)
-        advanceTimeBy(3_000)
+        advanceTimeBy(3.seconds)
         engine.onEvent(PresentationEvent.Advance)
-        advanceTimeBy(2_000)
+        advanceTimeBy(2.seconds)
         engine.onEvent(PresentationEvent.Advance)
         runCurrent()
 
@@ -204,11 +207,11 @@ class PresentationEngineTest {
         val engine = createEngine()
         loadAndStart(engine)
 
-        advanceTimeBy(5_000)
+        advanceTimeBy(5.seconds)
         engine.onEvent(PresentationEvent.Advance)
-        advanceTimeBy(3_000)
+        advanceTimeBy(3.seconds)
         engine.onEvent(PresentationEvent.Advance)
-        advanceTimeBy(2_000)
+        advanceTimeBy(2.seconds)
         engine.onEvent(PresentationEvent.Advance)
         runCurrent()
 
@@ -224,19 +227,19 @@ class PresentationEngineTest {
         val engine = createEngine()
         loadAndStart(engine)
 
-        advanceTimeBy(3_000)
+        advanceTimeBy(3.seconds)
         engine.onEvent(PresentationEvent.Advance)
 
-        advanceTimeBy(2_000)
+        advanceTimeBy(2.seconds)
         engine.onEvent(PresentationEvent.GoBack)
 
-        advanceTimeBy(4_000)
+        advanceTimeBy(4.seconds)
         engine.onEvent(PresentationEvent.Advance)
 
-        advanceTimeBy(1_000)
+        advanceTimeBy(1.seconds)
         engine.onEvent(PresentationEvent.Advance)
 
-        advanceTimeBy(1_000)
+        advanceTimeBy(1.seconds)
         engine.onEvent(PresentationEvent.Advance)
         runCurrent()
 
@@ -251,11 +254,11 @@ class PresentationEngineTest {
         val engine = createEngine()
         loadAndStart(engine)
 
-        advanceTimeBy(5_000)
+        advanceTimeBy(5.seconds)
 
         val state = engine.state.value
-        assertEquals(5.seconds, state.elapsed(currentTime))
-        assertEquals(5.seconds, state.currentBulletElapsed(currentTime))
+        assertEquals(5.seconds, state.elapsed(now()))
+        assertEquals(5.seconds, state.currentBulletElapsed(now()))
     }
 
     @Test
@@ -278,11 +281,11 @@ class PresentationEngineTest {
         val engine = createEngine(fs)
         loadAndStart(engine)
 
-        advanceTimeBy(2_000)
+        advanceTimeBy(2.seconds)
         engine.onEvent(PresentationEvent.Advance)
-        advanceTimeBy(2_000)
+        advanceTimeBy(2.seconds)
         engine.onEvent(PresentationEvent.Advance)
-        advanceTimeBy(2_000)
+        advanceTimeBy(2.seconds)
         engine.onEvent(PresentationEvent.Advance)
         runCurrent()
 
@@ -301,11 +304,11 @@ class PresentationEngineTest {
         val engine = createEngine(fs)
         loadAndStart(engine)
 
-        advanceTimeBy(1_000)
+        advanceTimeBy(1.seconds)
         engine.onEvent(PresentationEvent.Advance)
-        advanceTimeBy(1_000)
+        advanceTimeBy(1.seconds)
         engine.onEvent(PresentationEvent.Advance)
-        advanceTimeBy(1_000)
+        advanceTimeBy(1.seconds)
         engine.onEvent(PresentationEvent.Advance)
         runCurrent()
 
@@ -321,7 +324,7 @@ class PresentationEngineTest {
         val fs = createFileSystem()
         val existingRun = RunRecord(
             id = "old-run",
-            timestamp = 500,
+            timestamp = Instant.fromEpochMilliseconds(500),
             bulletPointDurations = mapOf("a" to 10.seconds, "b" to 5.seconds, "c" to 3.seconds),
         )
         val existingData = ProfileData(profile = profile, runs = listOf(existingRun))

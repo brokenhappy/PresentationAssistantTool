@@ -8,7 +8,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import kotlinx.coroutines.delay
+import kotlin.time.Clock
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Instant
 
 @Composable
 fun TimerDisplay(
@@ -58,7 +61,8 @@ fun formatTimer(duration: Duration): String {
     return if (negative) "-$formatted" else formatted
 }
 
-fun formatTimestamp(epochMs: Long): String {
+fun formatTimestamp(instant: Instant): String {
+    val epochMs = instant.toEpochMilliseconds()
     val totalSeconds = epochMs / 1000
     val hours = (totalSeconds / 3600) % 24
     val minutes = (totalSeconds / 60) % 60
@@ -66,12 +70,12 @@ fun formatTimestamp(epochMs: Long): String {
 }
 
 @Composable
-fun rememberNow(ticking: Boolean): Long {
-    var now by remember { mutableLongStateOf(com.woutwerkman.pa.platform.currentTimeMs()) }
+fun rememberNow(ticking: Boolean): Instant {
+    var now by remember { mutableStateOf(Clock.System.now()) }
     LaunchedEffect(ticking) {
         while (ticking) {
-            now = com.woutwerkman.pa.platform.currentTimeMs()
-            delay(100)
+            now = Clock.System.now()
+            delay(100.milliseconds)
         }
     }
     return now

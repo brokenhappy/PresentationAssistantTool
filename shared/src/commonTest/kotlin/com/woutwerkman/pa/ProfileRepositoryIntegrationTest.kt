@@ -11,6 +11,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Instant
 
 class ProfileRepositoryIntegrationTest {
 
@@ -42,7 +43,7 @@ class ProfileRepositoryIntegrationTest {
     fun saveAndLoadProfileData() = runTest {
         val fs = createFileSystem()
         val repo = ProfileRepository(fs)
-        val run = RunRecord("r1", 1000, mapOf("a" to 5.seconds, "b" to 3.seconds))
+        val run = RunRecord("r1", Instant.fromEpochMilliseconds(1000), mapOf("a" to 5.seconds, "b" to 3.seconds))
         val data = ProfileData(profile = profile, runs = listOf(run))
 
         repo.saveProfileData(data)
@@ -76,7 +77,7 @@ class ProfileRepositoryIntegrationTest {
     fun loadOrCreateMergesWithExistingRuns() = runTest {
         val fs = createFileSystem()
         val repo = ProfileRepository(fs)
-        val run = RunRecord("r1", 1000, mapOf("a" to 5.seconds, "b" to 3.seconds))
+        val run = RunRecord("r1", Instant.fromEpochMilliseconds(1000), mapOf("a" to 5.seconds, "b" to 3.seconds))
         repo.saveProfileData(ProfileData(profile = profile, runs = listOf(run)))
 
         val updatedProfile = profile.copy(

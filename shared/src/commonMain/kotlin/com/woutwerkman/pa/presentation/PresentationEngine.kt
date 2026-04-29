@@ -11,13 +11,14 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlin.time.Clock
 import kotlin.time.Duration
-import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Instant
 
 class PresentationEngine(
     private val repository: ProfileRepository,
     private val scope: CoroutineScope,
-    private val clock: () -> Long = { com.woutwerkman.pa.platform.currentTimeMs() },
+    private val clock: () -> Instant = { Clock.System.now() },
     private val idGenerator: () -> String = { defaultGenerateRunId() },
 ) {
     private val _state = MutableStateFlow(PresentationState())
@@ -94,7 +95,7 @@ class PresentationEngine(
         }
 
         val key = current.currentBulletKey ?: return
-        val visitDuration = (clock() - current.bulletStartTime).milliseconds
+        val visitDuration = clock() - current.bulletStartTime
         val accumulated = (current.currentRunDurations[key] ?: Duration.ZERO) + visitDuration
         val updatedDurations = current.currentRunDurations + (key to accumulated)
 
@@ -120,7 +121,7 @@ class PresentationEngine(
         if (!current.isActive || index < 0 || index >= current.bulletCount) return
 
         val key = current.currentBulletKey
-        val visitDuration = (clock() - current.bulletStartTime).milliseconds
+        val visitDuration = clock() - current.bulletStartTime
         val updatedDurations = if (key != null) {
             val accumulated = (current.currentRunDurations[key] ?: Duration.ZERO) + visitDuration
             current.currentRunDurations + (key to accumulated)
@@ -190,8 +191,8 @@ class PresentationEngine(
                     runs = updatedRuns,
                     currentBulletIndex = 0,
                     currentRunDurations = emptyMap(),
-                    presentationStartTime = 0L,
-                    bulletStartTime = 0L,
+                    presentationStartTime = Instant.fromEpochMilliseconds(0),
+                    bulletStartTime = Instant.fromEpochMilliseconds(0),
                 )
             }
             _appliedEvents.emit(PresentationEvent.Advance)

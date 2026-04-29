@@ -166,7 +166,7 @@ class SpotlightManager(
         val msg = byteArrayOf(devIdx, IROOT_INDEX, swFunc(0), featureHi.toByte(), featureLo.toByte(), 0x00)
         ch.write(msg, 7, REPORT_SHORT)
         repeat(10) {
-            val r = ch.readHidpp(2000) ?: return@repeat
+            val r = ch.readHidpp(2.seconds) ?: return@repeat
             if (r.featIdx == IROOT_INDEX && r.func == 0) {
                 val idx = r.params.getOrNull(0) ?: return null
                 return if (idx == 0x00.toByte()) null else idx
@@ -187,7 +187,7 @@ class SpotlightManager(
         params[2] = 0x03 // divert=1, dvalid=1
         val msg = byteArrayOf(devIdx, featIdx, swFunc(3)) + params
         dev.write(msg, 20, REPORT_LONG)
-        Hid4JavaChannel(dev).readHidpp(500)
+        Hid4JavaChannel(dev).readHidpp(500.milliseconds)
     }
 
     private fun undivertButtons(usb: UsbConnection) {
@@ -202,7 +202,7 @@ class SpotlightManager(
     }
 
     suspend fun vibrate(duration: Duration) {
-        val length = (duration.inWholeMilliseconds / 100).coerceIn(1, 10)
+        val length = (duration / 100.milliseconds).toInt().coerceIn(1, 10)
         if (btBleActive) {
             withContext(Dispatchers.IO) {
                 try { bleLib?.spotlight_ble_vibrate(length.toByte()) } catch (e: Exception) { log.debug("BLE vibrate failed", e) }
@@ -233,7 +233,7 @@ class SpotlightManager(
             try {
                 while (isActive) {
                     val buf = ByteArray(64)
-                    val n = dev.read(buf, 1000)
+                    val n = dev.read(buf, 1.seconds.inWholeMilliseconds.toInt())
                     if (n < 0) error("Device read error")
                     if (n == 0) continue
 
@@ -276,7 +276,7 @@ class SpotlightManager(
 
     private interface HidppChannel {
         fun write(message: ByteArray, packetLength: Int, reportId: Byte)
-        fun readHidpp(timeoutMs: Int): HidppMsg?
+        fun readHidpp(timeout: Duration): HidppMsg?
     }
 
     private class Hid4JavaChannel(private val dev: HidDevice) : HidppChannel {
@@ -284,9 +284,9 @@ class SpotlightManager(
             dev.write(message, packetLength, reportId)
         }
 
-        override fun readHidpp(timeoutMs: Int): HidppMsg? {
+        override fun readHidpp(timeout: Duration): HidppMsg? {
             val buf = ByteArray(64)
-            val n = dev.read(buf, timeoutMs)
+            val n = dev.read(buf, timeout.inWholeMilliseconds.toInt())
             if (n < 0) error("Device read error")
             if (n == 0) return null
             return parseHidpp(buf, n)

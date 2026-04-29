@@ -5,9 +5,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Instant
 
 val WARNING_BEFORE: Duration = 10.seconds
 val SHORT_VIBRATION: Duration = 100.milliseconds
@@ -15,7 +17,7 @@ val LONG_VIBRATION: Duration = 300.milliseconds
 
 suspend fun runTimingAlerts(
     stateFlow: StateFlow<PresentationState>,
-    clock: () -> Long = { com.woutwerkman.pa.platform.currentTimeMs() },
+    clock: () -> Instant = { Clock.System.now() },
     vibrate: suspend (Duration) -> Unit,
 ) {
     stateFlow

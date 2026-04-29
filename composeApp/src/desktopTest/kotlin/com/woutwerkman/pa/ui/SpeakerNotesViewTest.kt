@@ -12,6 +12,8 @@ import com.woutwerkman.pa.ui.control.SpeakerNotesView
 import com.woutwerkman.pa.ui.theme.AppTheme
 import kotlin.test.Test
 import kotlin.test.assertTrue
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.seconds
 
 @OptIn(ExperimentalTestApi::class)
 class SpeakerNotesViewTest {
@@ -31,13 +33,13 @@ class SpeakerNotesViewTest {
             AppTheme {
                 SpeakerNotesView(
                     state = run {
-                        val now = com.woutwerkman.pa.platform.currentTimeMs()
+                        val now = Clock.System.now()
                         PresentationState(
                             profile = profile,
                             isActive = true,
                             currentBulletIndex = 1,
-                            presentationStartTime = now - 15_000,
-                            bulletStartTime = now - 15_000,
+                            presentationStartTime = now - 15.seconds,
+                            bulletStartTime = now - 15.seconds,
                         )
                     },
                     onSwitchToControl = {},
@@ -108,13 +110,13 @@ class SpeakerNotesViewTest {
             AppTheme {
                 SpeakerNotesView(
                     state = run {
-                        val now = com.woutwerkman.pa.platform.currentTimeMs()
+                        val now = Clock.System.now()
                         PresentationState(
                             profile = profile,
                             isActive = true,
                             currentBulletIndex = 0,
-                            presentationStartTime = now - 120_000,
-                            bulletStartTime = now - 90_000,
+                            presentationStartTime = now - 120.seconds,
+                            bulletStartTime = now - 90.seconds,
                         )
                     },
                     onSwitchToControl = {},

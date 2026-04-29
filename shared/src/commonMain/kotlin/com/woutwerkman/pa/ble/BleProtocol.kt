@@ -1,14 +1,16 @@
-@file:UseSerializers(DurationAsLongMillisSerializer::class)
+@file:UseSerializers(DurationAsLongMillisSerializer::class, InstantAsLongMillisSerializer::class)
 
 package com.woutwerkman.pa.ble
 
 import com.woutwerkman.pa.model.DurationAsLongMillisSerializer
+import com.woutwerkman.pa.model.InstantAsLongMillisSerializer
 import com.woutwerkman.pa.presentation.PresentationEvent
 import com.woutwerkman.pa.presentation.PresentationState
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.UseSerializers
 import kotlinx.serialization.json.Json
 import kotlin.time.Duration
+import kotlin.time.Instant
 
 val bleJson = Json {
     ignoreUnknownKeys = true
@@ -36,11 +38,11 @@ fun BleMessage.encode(): ByteArray =
 fun decodeBleMessage(bytes: ByteArray): BleMessage =
     bleJson.decodeFromString(BleMessage.serializer(), bytes.decodeToString())
 
-fun PresentationState.forBleSync(now: Long): PresentationState {
+fun PresentationState.forBleSync(now: Instant): PresentationState {
     val averageDurations = stats.averageDurations
     val adjusted = if (isActive) copy(
-        presentationStartTime = now - presentationStartTime,
-        bulletStartTime = now - bulletStartTime,
+        presentationStartTime = Instant.fromEpochMilliseconds((now - presentationStartTime).inWholeMilliseconds),
+        bulletStartTime = Instant.fromEpochMilliseconds((now - bulletStartTime).inWholeMilliseconds),
     ) else this
     return if (runs.isEmpty()) adjusted else adjusted.copy(
         runs = emptyList(),

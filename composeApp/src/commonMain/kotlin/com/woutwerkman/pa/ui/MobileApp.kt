@@ -16,8 +16,10 @@ import com.woutwerkman.pa.ui.control.SpeakerNotesView
 import com.woutwerkman.pa.ui.expanded.ExpandedView
 import com.woutwerkman.pa.ui.theme.AppTheme
 import kotlinx.coroutines.launch
+import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Instant
 
 enum class MobileScreen {
     Connection,
@@ -44,15 +46,15 @@ fun MobileApp(
         bleService.incomingMessages.collect { message ->
             when (message) {
                 is BleMessage.FullSync -> {
-                    val now = currentTimeMs()
+                    val now = Clock.System.now()
                     val received = message.state
                     state = if (received.isActive) received.copy(
-                        presentationStartTime = now - received.presentationStartTime,
-                        bulletStartTime = now - received.bulletStartTime,
+                        presentationStartTime = now - received.presentationStartTime.toEpochMilliseconds().milliseconds,
+                        bulletStartTime = now - received.bulletStartTime.toEpochMilliseconds().milliseconds,
                     ) else received
                 }
                 is BleMessage.Event -> {
-                    val now = currentTimeMs()
+                    val now = Clock.System.now()
                     applyRemoteEvent(state, message.event, now)?.let { state = it }
                 }
                 is BleMessage.SyncRequest -> {}
@@ -135,7 +137,7 @@ fun MobileApp(
     }
 }
 
-private fun applyRemoteEvent(state: PresentationState, event: PresentationEvent, now: Long): PresentationState? {
+private fun applyRemoteEvent(state: PresentationState, event: PresentationEvent, now: Instant): PresentationState? {
     return when (event) {
         is PresentationEvent.Start -> state.copy(
             isActive = true,
@@ -152,8 +154,8 @@ private fun applyRemoteEvent(state: PresentationState, event: PresentationEvent,
                     isActive = false,
                     currentBulletIndex = 0,
                     currentRunDurations = emptyMap(),
-                    presentationStartTime = 0L,
-                    bulletStartTime = 0L,
+                    presentationStartTime = Instant.fromEpochMilliseconds(0),
+                    bulletStartTime = Instant.fromEpochMilliseconds(0),
                 )
             } else {
                 state.copy(
@@ -186,9 +188,7 @@ private fun applyRemoteEvent(state: PresentationState, event: PresentationEvent,
     }
 }
 
-private fun saveBulletDuration(state: PresentationState, now: Long): Map<String, Duration> {
+private fun saveBulletDuration(state: PresentationState, now: Instant): Map<String, Duration> {
     val key = state.currentBulletKey ?: return state.currentRunDurations
     return state.currentRunDurations + (key to state.currentBulletElapsed(now))
 }
-
-private fun currentTimeMs(): Long = com.woutwerkman.pa.platform.currentTimeMs()

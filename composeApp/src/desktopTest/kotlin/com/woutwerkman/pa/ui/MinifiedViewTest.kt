@@ -13,6 +13,8 @@ import com.woutwerkman.pa.ui.minified.MinifiedView
 import com.woutwerkman.pa.ui.theme.AppTheme
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.time.Clock
+import kotlin.time.Duration.Companion.seconds
 
 @OptIn(ExperimentalTestApi::class)
 class MinifiedViewTest {
@@ -84,13 +86,13 @@ class MinifiedViewTest {
             AppTheme {
                 MinifiedView(
                     state = run {
-                        val now = com.woutwerkman.pa.platform.currentTimeMs()
+                        val now = Clock.System.now()
                         PresentationState(
                             profile = profile,
                             isActive = true,
                             currentBulletIndex = 1,
-                            presentationStartTime = now - 5_000,
-                            bulletStartTime = now - 5_000,
+                            presentationStartTime = now - 5.seconds,
+                            bulletStartTime = now - 5.seconds,
                         )
                     },
                     onEvent = {},

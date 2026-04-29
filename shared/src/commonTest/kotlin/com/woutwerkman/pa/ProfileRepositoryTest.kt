@@ -11,6 +11,7 @@ import kotlin.test.assertNull
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Instant
 
 class ProfileRepositoryTest {
 
@@ -50,7 +51,7 @@ class ProfileRepositoryTest {
         )
         val run = RunRecord(
             id = "run-1",
-            timestamp = 1000L,
+            timestamp = Instant.fromEpochMilliseconds(1000),
             bulletPointDurations = mapOf("a" to 5.seconds, "b" to 3.seconds),
         )
         val data = ProfileData(profile = profile, runs = listOf(run))
@@ -65,10 +66,10 @@ class ProfileRepositoryTest {
     @Test
     fun computeStatsWithMultipleRuns() {
         val runs = listOf(
-            RunRecord("1", 100, mapOf("a" to 1.seconds, "b" to 2.seconds)),
-            RunRecord("2", 200, mapOf("a" to 2.seconds, "b" to 3.seconds)),
-            RunRecord("3", 300, mapOf("a" to 3.seconds, "b" to 4.seconds)),
-            RunRecord("4", 400, mapOf("a" to 4.seconds, "b" to 5.seconds)),
+            RunRecord("1", Instant.fromEpochMilliseconds(100), mapOf("a" to 1.seconds, "b" to 2.seconds)),
+            RunRecord("2", Instant.fromEpochMilliseconds(200), mapOf("a" to 2.seconds, "b" to 3.seconds)),
+            RunRecord("3", Instant.fromEpochMilliseconds(300), mapOf("a" to 3.seconds, "b" to 4.seconds)),
+            RunRecord("4", Instant.fromEpochMilliseconds(400), mapOf("a" to 4.seconds, "b" to 5.seconds)),
         )
 
         val stats = BulletPointStats.compute(runs)
@@ -85,9 +86,9 @@ class ProfileRepositoryTest {
     @Test
     fun computeStatsExcludesDeselectedRuns() {
         val runs = listOf(
-            RunRecord("1", 100, mapOf("a" to 1.seconds), isIncludedInStats = false),
-            RunRecord("2", 200, mapOf("a" to 2.seconds)),
-            RunRecord("3", 300, mapOf("a" to 4.seconds)),
+            RunRecord("1", Instant.fromEpochMilliseconds(100), mapOf("a" to 1.seconds), isIncludedInStats = false),
+            RunRecord("2", Instant.fromEpochMilliseconds(200), mapOf("a" to 2.seconds)),
+            RunRecord("3", Instant.fromEpochMilliseconds(300), mapOf("a" to 4.seconds)),
         )
 
         val stats = BulletPointStats.compute(runs)

@@ -2,7 +2,6 @@ package com.woutwerkman.pa.repository
 
 import com.woutwerkman.pa.model.RunRecord
 import kotlin.time.Duration
-import kotlin.time.Duration.Companion.milliseconds
 
 data class BulletPointStats(
     val averageDurations: Map<String, Duration>,
@@ -29,21 +28,21 @@ data class BulletPointStats(
             val averageDurations = allKeys.associateWith { key ->
                 val durations = included.mapNotNull { it.bulletPointDurations[key] }
                 if (durations.isEmpty()) Duration.ZERO
-                else durations.map { it.inWholeMilliseconds }.average().toLong().milliseconds
+                else durations.reduce { a, b -> a + b } / durations.size
             }
 
             val lastThree = included.sortedByDescending { it.timestamp }.take(3)
             val lastThreeAverageDurations = allKeys.associateWith { key ->
                 val durations = lastThree.mapNotNull { it.bulletPointDurations[key] }
                 if (durations.isEmpty()) Duration.ZERO
-                else durations.map { it.inWholeMilliseconds }.average().toLong().milliseconds
+                else durations.reduce { a, b -> a + b } / durations.size
             }
 
             return BulletPointStats(
                 averageDurations = averageDurations,
                 lastThreeAverageDurations = lastThreeAverageDurations,
-                totalAverage = included.map { it.totalDuration.inWholeMilliseconds }.average().toLong().milliseconds,
-                totalLastThreeAverage = lastThree.map { it.totalDuration.inWholeMilliseconds }.average().toLong().milliseconds,
+                totalAverage = included.map { it.totalDuration }.reduce { a, b -> a + b } / included.size,
+                totalLastThreeAverage = lastThree.map { it.totalDuration }.reduce { a, b -> a + b } / lastThree.size,
                 lastRunTotal = included.maxByOrNull { it.timestamp }?.totalDuration,
             )
         }

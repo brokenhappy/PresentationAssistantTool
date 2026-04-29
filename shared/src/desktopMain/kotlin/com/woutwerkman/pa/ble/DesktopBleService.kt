@@ -7,6 +7,8 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlin.coroutines.coroutineContext
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Clock
+import kotlin.time.Instant
 import org.slf4j.LoggerFactory
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
@@ -53,7 +55,7 @@ class DesktopBleService(
     )
 
     private val assemblers = mutableMapOf<String, MessageAssembler>()
-    private val lastHeartbeat = mutableMapOf<String, Long>()
+    private val lastHeartbeat = mutableMapOf<String, Instant>()
     // Serializes multi-chunk writes so concurrent sendMessage calls don't interleave chunks.
     private val writeMutex = Mutex()
 
@@ -212,7 +214,7 @@ class DesktopBleService(
 
     private fun observeMessages(deviceId: String, p: Peripheral) {
         observeJobs[deviceId]?.cancel()
-        lastHeartbeat[deviceId] = System.currentTimeMillis()
+        lastHeartbeat[deviceId] = Clock.System.now()
         observeJobs[deviceId] = scope.launch {
             // Kable's observe() Flow stays active across disconnections by design,
             // so we need these separate monitors to detect disconnection.
@@ -224,7 +226,7 @@ class DesktopBleService(
                 while (isActive) {
                     delay(BleConfig.HEARTBEAT_TIMEOUT)
                     val last = lastHeartbeat[deviceId] ?: break
-                    if (System.currentTimeMillis() - last > BleConfig.HEARTBEAT_TIMEOUT.inWholeMilliseconds) {
+                    if ((Clock.System.now() - last) > BleConfig.HEARTBEAT_TIMEOUT) {
                         handleDisconnect(deviceId)
                         break
                     }
@@ -233,7 +235,7 @@ class DesktopBleService(
             try {
                 p.observe(commandChar).collect { bytes ->
                     if (bytes.isNotEmpty() && bytes[0] == HEARTBEAT_BYTE) {
-                        lastHeartbeat[deviceId] = System.currentTimeMillis()
+                        lastHeartbeat[deviceId] = Clock.System.now()
                         return@collect
                     }
                     try {

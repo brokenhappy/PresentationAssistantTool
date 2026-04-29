@@ -14,6 +14,7 @@ import com.woutwerkman.pa.ui.theme.AppTheme
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Instant
 
 @OptIn(ExperimentalTestApi::class)
 class ExpandedViewTest {
@@ -101,7 +102,7 @@ class ExpandedViewTest {
     fun statsHeaderShowsRunStatistics() = runComposeUiTest {
         val run = RunRecord(
             id = "r1",
-            timestamp = 1000,
+            timestamp = Instant.fromEpochMilliseconds(1000),
             bulletPointDurations = mapOf("a" to 10.seconds, "b" to 20.seconds, "c" to 5.seconds),
         )
 
