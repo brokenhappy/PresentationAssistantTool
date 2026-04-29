@@ -40,9 +40,12 @@ fun ControlView(
         if (state.isActive) {
             Spacer(Modifier.height(32.dp))
 
+            val countdown = state.bulletCountdown
             TimerDisplay(
-                elapsed = state.bulletCountdown ?: state.currentBulletElapsed,
+                elapsed = countdown ?: state.currentBulletElapsed,
                 style = MaterialTheme.typography.displayMedium,
+                color = if (countdown != null && countdown.isNegative()) MaterialTheme.colorScheme.error
+                        else MaterialTheme.colorScheme.onSurface,
             )
 
             Spacer(Modifier.height(4.dp))

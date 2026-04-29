@@ -92,9 +92,12 @@ private fun ActiveState(state: PresentationState) {
         modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        val countdown = state.bulletCountdown
         TimerDisplay(
-            elapsed = state.bulletCountdown ?: state.currentBulletElapsed,
+            elapsed = countdown ?: state.currentBulletElapsed,
             style = MaterialTheme.typography.titleMedium,
+            color = if (countdown != null && countdown.isNegative()) MaterialTheme.colorScheme.error
+                    else MaterialTheme.colorScheme.onSurface,
         )
         Spacer(Modifier.width(4.dp))
         DeltaTimerDisplay(

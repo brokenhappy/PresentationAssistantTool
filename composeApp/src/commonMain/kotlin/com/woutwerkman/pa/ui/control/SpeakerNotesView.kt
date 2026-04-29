@@ -37,10 +37,12 @@ fun SpeakerNotesView(
                     style = MaterialTheme.typography.headlineMedium,
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    val countdown = state.bulletCountdown
                     TimerDisplay(
-                        elapsed = state.bulletCountdown ?: state.currentBulletElapsed,
+                        elapsed = countdown ?: state.currentBulletElapsed,
                         style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = if (countdown != null && countdown.isNegative()) MaterialTheme.colorScheme.error
+                                else MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Spacer(Modifier.width(8.dp))
                     DeltaTimerDisplay(
