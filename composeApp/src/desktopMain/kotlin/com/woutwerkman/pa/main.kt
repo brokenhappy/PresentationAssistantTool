@@ -46,7 +46,7 @@ fun main() {
     application {
         val clock: kotlin.time.Clock = kotlin.time.Clock.System
         val engineScope = remember { CoroutineScope(SupervisorJob() + Dispatchers.Default) }
-        val fileSystem = remember { PlatformFileSystem(System.getProperty("user.home") + "/.presentationassistant") }
+        val fileSystem = remember { PlatformFileSystem(System.getProperty("user.home") + "/.imprass") }
         val repository = remember { ProfileRepository(fileSystem) }
         val engine = remember { PresentationEngine(repository, engineScope, clock) }
         val peerStorage = remember { PeerStorage(fileSystem) }
@@ -89,7 +89,7 @@ fun main() {
 
         LaunchedEffect(engine) {
             engine.error.collect { message ->
-                println("PresentationAssistant error: $message")
+                println("Imprass error: $message")
             }
         }
 
@@ -265,7 +265,7 @@ private fun ApplicationScope.AppTray(
 ) {
     Tray(
         icon = trayIcon,
-        tooltip = "Presentation Assistant",
+        tooltip = "Imprass",
         menu = {
             Item(
                 if (showMinified) "Hide Presentation" else "Show Presentation",
@@ -292,7 +292,7 @@ private fun MinifiedWindow(
 ) {
     Window(
         onCloseRequest = onHide,
-        title = "Presentation Assistant",
+        title = "Imprass",
         alwaysOnTop = true,
         undecorated = true,
         transparent = true,

@@ -45,8 +45,8 @@
 		<string>bluetooth-peripheral</string>
 	</array>
 	<key>NSBluetoothAlwaysUsageDescription</key>
-	<string>Presentation Assistant uses Bluetooth to connect with your desktop computer.</string>
+	<string>Imprass uses Bluetooth to connect with your desktop computer.</string>
 	<key>NSBluetoothPeripheralUsageDescription</key>
-	<string>Presentation Assistant uses Bluetooth to connect with your desktop computer.</string>
+	<string>Imprass uses Bluetooth to connect with your desktop computer.</string>
 </dict>
 </plist>

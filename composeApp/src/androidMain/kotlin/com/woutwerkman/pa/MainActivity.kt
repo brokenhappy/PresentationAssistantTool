@@ -168,7 +168,7 @@ private fun PermissionDeniedScreen(
                     "On this Android version, Location permission is required for Bluetooth scanning. " +
                         "This app does not track your location — it is only used to discover nearby Bluetooth devices."
                 } else {
-                    "Presentation Assistant needs Bluetooth permission to connect with your desktop computer."
+                    "Imprass needs Bluetooth permission to connect with your desktop computer."
                 },
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
