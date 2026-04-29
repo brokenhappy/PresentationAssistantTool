@@ -47,3 +47,7 @@ bin/
 ### Native build artifacts ###
 *.dylib
 /notes/*
+
+### Signing ###
+*.jks
+*.keystore
