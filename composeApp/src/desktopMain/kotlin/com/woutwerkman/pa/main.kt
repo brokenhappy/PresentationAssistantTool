@@ -60,6 +60,7 @@ fun main() {
         var showMinified by remember { mutableStateOf(true) }
         var showExpanded by remember { mutableStateOf(false) }
         var showConnection by remember { mutableStateOf(false) }
+        var devicesFocusCounter by remember { mutableIntStateOf(0) }
 
         val trayIcon = remember { createTrayIcon() }
 
@@ -97,7 +98,7 @@ fun main() {
             showMinified = showMinified,
             onToggleMinified = { showMinified = !showMinified },
             onShowExpanded = { showExpanded = true },
-            onShowDevices = { showConnection = true },
+            onShowDevices = { showConnection = true; devicesFocusCounter++ },
             onCloseProfile = { engine.onEvent(PresentationEvent.CloseProfile) },
         )
 
@@ -132,6 +133,9 @@ fun main() {
                 title = "Devices",
                 state = rememberWindowState(size = DpSize(450.dp, 550.dp)),
             ) {
+                LaunchedEffect(devicesFocusCounter) {
+                    window.toFront()
+                }
                 val pairedPeers by produceState(emptyList<PairedPeer>()) {
                     value = bleService.getPersistedPeers()
                 }
