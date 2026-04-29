@@ -8,6 +8,7 @@ import androidx.compose.ui.Modifier
 import com.woutwerkman.pa.ble.BleConnectionState
 import com.woutwerkman.pa.ble.BleMessage
 import com.woutwerkman.pa.ble.BleService
+import com.woutwerkman.pa.ble.DemoBleService
 import com.woutwerkman.pa.presentation.PresentationEvent
 import com.woutwerkman.pa.presentation.PresentationState
 import com.woutwerkman.pa.ui.connection.MobileConnectionView
@@ -36,15 +37,18 @@ fun MobileApp(
     onVibrate: (Duration) -> Unit = {},
     clock: Clock = Clock.System,
 ) {
-    val connectionState by bleService.connectionState.collectAsState()
-    val connectedPeers by bleService.connectedPeers.collectAsState()
-    val bleError by bleService.error.collectAsState()
+    var activeBleService by remember { mutableStateOf(bleService) }
+    var isDemo by remember { mutableStateOf(false) }
+
+    val connectionState by activeBleService.connectionState.collectAsState()
+    val connectedPeers by activeBleService.connectedPeers.collectAsState()
+    val bleError by activeBleService.error.collectAsState()
     var currentScreen by remember { mutableStateOf(MobileScreen.Connection) }
     var state by remember { mutableStateOf(PresentationState()) }
     val scope = rememberCoroutineScope()
 
-    LaunchedEffect(bleService) {
-        bleService.incomingMessages.collect { message ->
+    LaunchedEffect(activeBleService) {
+        activeBleService.incomingMessages.collect { message ->
             when (message) {
                 is BleMessage.FullSync -> {
                     val now = clock.now()
@@ -77,7 +81,7 @@ fun MobileApp(
             if (currentScreen == MobileScreen.Connection) {
                 currentScreen = MobileScreen.Control
             }
-            bleService.sendMessage(BleMessage.SyncRequest)
+            activeBleService.sendMessage(BleMessage.SyncRequest)
         }
         if (connectionState == BleConnectionState.Disconnected && currentScreen != MobileScreen.Connection) {
             currentScreen = MobileScreen.Connection
@@ -85,7 +89,7 @@ fun MobileApp(
     }
 
     val sendEvent: (PresentationEvent) -> Unit = { event ->
-        scope.launch { bleService.sendMessage(BleMessage.Event(event)) }
+        scope.launch { activeBleService.sendMessage(BleMessage.Event(event)) }
     }
 
     AppTheme {
@@ -108,6 +112,13 @@ fun MobileApp(
                     connectedDeviceName = connectedPeers.firstOrNull()?.name,
                     deviceId = deviceId,
                     bleError = bleError,
+                    onEnterDemo = {
+                        val demo = DemoBleService(clock)
+                        activeBleService = demo
+                        isDemo = true
+                        currentScreen = MobileScreen.Control
+                        scope.launch { demo.emitInitialState() }
+                    },
                 )
 
                 MobileScreen.Control -> ControlView(

@@ -21,6 +21,7 @@ fun MobileConnectionView(
     connectedDeviceName: String?,
     deviceId: String,
     bleError: BleError? = null,
+    onEnterDemo: () -> Unit = {},
 ) {
     Column(
         modifier = Modifier.fillMaxSize().padding(32.dp),
@@ -62,6 +63,8 @@ fun MobileConnectionView(
                 Spacer(Modifier.height(16.dp))
                 QrCodeImage(data = deviceId)
                 DeviceIdWithCopy(deviceId)
+                Spacer(Modifier.height(24.dp))
+                DemoButton(onEnterDemo)
             }
             else -> {
                 if (bleError != null) {
@@ -85,9 +88,24 @@ fun MobileConnectionView(
                 Spacer(Modifier.height(16.dp))
                 QrCodeImage(data = deviceId)
                 DeviceIdWithCopy(deviceId)
+                Spacer(Modifier.height(24.dp))
+                DemoButton(onEnterDemo)
             }
         }
     }
+}
+
+@Composable
+private fun DemoButton(onEnterDemo: () -> Unit) {
+    OutlinedButton(onClick = onEnterDemo) {
+        Text("Try Demo")
+    }
+    Spacer(Modifier.height(4.dp))
+    Text(
+        text = "Preview the app without a desktop connection",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
 }
 
 @Composable
