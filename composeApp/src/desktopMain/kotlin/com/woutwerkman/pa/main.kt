@@ -107,7 +107,6 @@ fun main() {
                 state = state,
                 engine = engine,
                 onHide = { showMinified = false },
-                onExpand = { showExpanded = true },
             )
         }
 
@@ -295,7 +294,6 @@ private fun MinifiedWindow(
     state: PresentationState,
     engine: PresentationEngine,
     onHide: () -> Unit,
-    onExpand: () -> Unit,
 ) {
     Window(
         onCloseRequest = onHide,
@@ -344,7 +342,6 @@ private fun MinifiedWindow(
                     MinifiedView(
                         state = state,
                         onEvent = engine::onEvent,
-                        onExpand = onExpand,
                         onHide = onHide,
                         modifier = dropModifier,
                     )

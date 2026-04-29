@@ -18,7 +18,6 @@ import com.woutwerkman.pa.ui.components.TimerDisplay
 fun MinifiedView(
     state: PresentationState,
     onEvent: (PresentationEvent) -> Unit,
-    onExpand: () -> Unit,
     onHide: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -30,8 +29,8 @@ fun MinifiedView(
             Box(modifier = Modifier.weight(1f)) {
                 when {
                     state.profile == null -> EmptyState()
-                    state.isActive -> ActiveState(state, onExpand, onHide)
-                    else -> IdleState(state, onEvent, onExpand, onHide)
+                    state.isActive -> ActiveState(state, onHide)
+                    else -> IdleState(state, onEvent, onHide)
                 }
             }
             if (state.isActive && state.bulletCount > 0) {
@@ -64,7 +63,6 @@ private fun EmptyState() {
 private fun IdleState(
     state: PresentationState,
     onEvent: (PresentationEvent) -> Unit,
-    onExpand: () -> Unit,
     onHide: () -> Unit,
 ) {
     Row(
@@ -88,9 +86,6 @@ private fun IdleState(
             Text("Start", style = MaterialTheme.typography.labelMedium)
         }
         Spacer(Modifier.width(4.dp))
-        IconButton(onClick = onExpand, modifier = Modifier.size(32.dp)) {
-            Text("⤢", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
         IconButton(onClick = onHide, modifier = Modifier.size(32.dp)) {
             Text("✕", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
@@ -100,7 +95,6 @@ private fun IdleState(
 @Composable
 private fun ActiveState(
     state: PresentationState,
-    onExpand: () -> Unit,
     onHide: () -> Unit,
 ) {
     Row(
@@ -126,9 +120,6 @@ private fun ActiveState(
             modifier = Modifier.weight(1f),
         )
         Spacer(Modifier.width(4.dp))
-        IconButton(onClick = onExpand, modifier = Modifier.size(32.dp)) {
-            Text("⤢", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
         IconButton(onClick = onHide, modifier = Modifier.size(32.dp)) {
             Text("✕", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }

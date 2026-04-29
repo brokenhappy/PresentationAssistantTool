@@ -34,7 +34,7 @@ class MinifiedViewTest {
                 MinifiedView(
                     state = PresentationState(),
                     onEvent = {},
-                    onExpand = {},
+
                     onHide = {},
                 )
             }
@@ -50,7 +50,7 @@ class MinifiedViewTest {
                 MinifiedView(
                     state = PresentationState(profile = profile),
                     onEvent = {},
-                    onExpand = {},
+
                     onHide = {},
                 )
             }
@@ -69,7 +69,7 @@ class MinifiedViewTest {
                 MinifiedView(
                     state = PresentationState(profile = profile),
                     onEvent = { events.add(it) },
-                    onExpand = {},
+
                     onHide = {},
                 )
             }
@@ -91,7 +91,7 @@ class MinifiedViewTest {
                         currentBulletElapsed = 5.seconds,
                     ),
                     onEvent = {},
-                    onExpand = {},
+
                     onHide = {},
                 )
             }
@@ -112,7 +112,7 @@ class MinifiedViewTest {
                         currentBulletIndex = 0,
                     ),
                     onEvent = {},
-                    onExpand = {},
+
                     onHide = {},
                 )
             }
