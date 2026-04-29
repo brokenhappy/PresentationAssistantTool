@@ -18,7 +18,6 @@ import com.woutwerkman.pa.ui.components.TimerDisplay
 fun MinifiedView(
     state: PresentationState,
     onEvent: (PresentationEvent) -> Unit,
-    onHide: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Surface(
@@ -29,8 +28,8 @@ fun MinifiedView(
             Box(modifier = Modifier.weight(1f)) {
                 when {
                     state.profile == null -> EmptyState()
-                    state.isActive -> ActiveState(state, onHide)
-                    else -> IdleState(state, onEvent, onHide)
+                    state.isActive -> ActiveState(state)
+                    else -> IdleState(state, onEvent)
                 }
             }
             if (state.isActive && state.bulletCount > 0) {
@@ -63,7 +62,6 @@ private fun EmptyState() {
 private fun IdleState(
     state: PresentationState,
     onEvent: (PresentationEvent) -> Unit,
-    onHide: () -> Unit,
 ) {
     Row(
         modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 4.dp),
@@ -85,18 +83,11 @@ private fun IdleState(
         ) {
             Text("Start", style = MaterialTheme.typography.labelMedium)
         }
-        Spacer(Modifier.width(4.dp))
-        IconButton(onClick = onHide, modifier = Modifier.size(32.dp)) {
-            Text("✕", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
     }
 }
 
 @Composable
-private fun ActiveState(
-    state: PresentationState,
-    onHide: () -> Unit,
-) {
+private fun ActiveState(state: PresentationState) {
     Row(
         modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -119,9 +110,5 @@ private fun ActiveState(
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
         )
-        Spacer(Modifier.width(4.dp))
-        IconButton(onClick = onHide, modifier = Modifier.size(32.dp)) {
-            Text("✕", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
     }
 }

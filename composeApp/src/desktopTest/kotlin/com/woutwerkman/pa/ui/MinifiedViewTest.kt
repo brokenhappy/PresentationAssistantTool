@@ -35,7 +35,7 @@ class MinifiedViewTest {
                     state = PresentationState(),
                     onEvent = {},
 
-                    onHide = {},
+
                 )
             }
         }
@@ -51,7 +51,7 @@ class MinifiedViewTest {
                     state = PresentationState(profile = profile),
                     onEvent = {},
 
-                    onHide = {},
+
                 )
             }
         }
@@ -70,7 +70,7 @@ class MinifiedViewTest {
                     state = PresentationState(profile = profile),
                     onEvent = { events.add(it) },
 
-                    onHide = {},
+
                 )
             }
         }
@@ -92,7 +92,7 @@ class MinifiedViewTest {
                     ),
                     onEvent = {},
 
-                    onHide = {},
+
                 )
             }
         }
@@ -113,7 +113,7 @@ class MinifiedViewTest {
                     ),
                     onEvent = {},
 
-                    onHide = {},
+
                 )
             }
         }

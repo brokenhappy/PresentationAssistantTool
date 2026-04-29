@@ -342,7 +342,6 @@ private fun MinifiedWindow(
                     MinifiedView(
                         state = state,
                         onEvent = engine::onEvent,
-                        onHide = onHide,
                         modifier = dropModifier,
                     )
                 }
