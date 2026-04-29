@@ -13,7 +13,6 @@ import com.woutwerkman.pa.ui.control.ControlView
 import com.woutwerkman.pa.ui.theme.AppTheme
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.time.Duration.Companion.seconds
 
 @OptIn(ExperimentalTestApi::class)
 class ControlViewTest {
@@ -67,12 +66,16 @@ class ControlViewTest {
         setContent {
             AppTheme {
                 ControlView(
-                    state = PresentationState(
-                        profile = profile,
-                        isActive = true,
-                        currentBulletIndex = 0,
-                        currentBulletElapsed = 42.seconds,
-                    ),
+                    state = run {
+                        val now = com.woutwerkman.pa.platform.currentTimeMs()
+                        PresentationState(
+                            profile = profile,
+                            isActive = true,
+                            currentBulletIndex = 0,
+                            presentationStartTime = now - 42_000,
+                            bulletStartTime = now - 42_000,
+                        )
+                    },
                     onEvent = {},
                     onSwitchToNotes = {},
                     onSwitchToExpanded = {},

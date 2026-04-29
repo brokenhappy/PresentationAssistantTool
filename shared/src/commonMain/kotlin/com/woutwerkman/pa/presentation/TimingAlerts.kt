@@ -15,6 +15,7 @@ val LONG_VIBRATION: Duration = 300.milliseconds
 
 suspend fun runTimingAlerts(
     stateFlow: StateFlow<PresentationState>,
+    clock: () -> Long = { com.woutwerkman.pa.platform.currentTimeMs() },
     vibrate: suspend (Duration) -> Unit,
 ) {
     stateFlow
@@ -24,7 +25,7 @@ suspend fun runTimingAlerts(
             if (bullet == null) return@collectLatest
 
             val warningAt = (bullet.average - WARNING_BEFORE).coerceAtLeast(Duration.ZERO)
-            val alreadyElapsed = stateFlow.value.currentBulletElapsed
+            val alreadyElapsed = stateFlow.value.currentBulletElapsed(clock())
 
             if (alreadyElapsed <= warningAt) {
                 delay(warningAt - alreadyElapsed)

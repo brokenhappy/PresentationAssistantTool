@@ -24,6 +24,7 @@ import com.woutwerkman.pa.ui.components.DeltaTimerDisplay
 import com.woutwerkman.pa.ui.components.TimerDisplay
 import com.woutwerkman.pa.ui.components.formatTimer
 import com.woutwerkman.pa.ui.components.formatTimestamp
+import com.woutwerkman.pa.ui.components.rememberNow
 
 @Composable
 fun ExpandedView(
@@ -74,6 +75,7 @@ fun ExpandedView(
 
 @Composable
 private fun ActiveHeader(state: PresentationState) {
+    val now = rememberNow(ticking = true)
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
@@ -94,8 +96,8 @@ private fun ActiveHeader(state: PresentationState) {
             }
             Spacer(Modifier.width(12.dp))
             Column(horizontalAlignment = Alignment.End) {
-                TimerDisplay(elapsed = state.elapsed)
-                DeltaTimerDisplay(delta = state.globalScheduleDelta)
+                TimerDisplay(elapsed = state.elapsed(now))
+                DeltaTimerDisplay(delta = state.globalScheduleDelta(now))
             }
         }
         LinearProgressIndicator(

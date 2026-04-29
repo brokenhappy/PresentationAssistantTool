@@ -13,6 +13,7 @@ import com.woutwerkman.pa.presentation.PresentationEvent
 import com.woutwerkman.pa.presentation.PresentationState
 import com.woutwerkman.pa.ui.components.DeltaTimerDisplay
 import com.woutwerkman.pa.ui.components.TimerDisplay
+import com.woutwerkman.pa.ui.components.rememberNow
 
 @Composable
 fun ControlView(
@@ -38,11 +39,12 @@ fun ControlView(
         }
 
         if (state.isActive) {
+            val now = rememberNow(ticking = true)
             Spacer(Modifier.height(32.dp))
 
-            val countdown = state.bulletCountdown
+            val countdown = state.bulletCountdown(now)
             TimerDisplay(
-                elapsed = countdown ?: state.currentBulletElapsed,
+                elapsed = countdown ?: state.currentBulletElapsed(now),
                 style = MaterialTheme.typography.displayMedium,
                 color = if (countdown != null && countdown.isNegative()) MaterialTheme.colorScheme.error
                         else MaterialTheme.colorScheme.onSurface,
@@ -51,7 +53,7 @@ fun ControlView(
             Spacer(Modifier.height(4.dp))
 
             DeltaTimerDisplay(
-                delta = state.globalScheduleDelta,
+                delta = state.globalScheduleDelta(now),
                 style = MaterialTheme.typography.titleMedium,
             )
 

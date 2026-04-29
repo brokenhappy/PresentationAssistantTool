@@ -14,6 +14,7 @@ import com.woutwerkman.pa.presentation.PresentationState
 import com.woutwerkman.pa.ui.LockLandscape
 import com.woutwerkman.pa.ui.components.DeltaTimerDisplay
 import com.woutwerkman.pa.ui.components.TimerDisplay
+import com.woutwerkman.pa.ui.components.rememberNow
 
 @Composable
 fun SpeakerNotesView(
@@ -26,6 +27,7 @@ fun SpeakerNotesView(
         modifier = Modifier.fillMaxSize().padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
+        val now = rememberNow(ticking = state.isActive)
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -33,20 +35,20 @@ fun SpeakerNotesView(
         ) {
             Column {
                 TimerDisplay(
-                    elapsed = state.elapsed,
+                    elapsed = state.elapsed(now),
                     style = MaterialTheme.typography.headlineMedium,
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    val countdown = state.bulletCountdown
+                    val countdown = state.bulletCountdown(now)
                     TimerDisplay(
-                        elapsed = countdown ?: state.currentBulletElapsed,
+                        elapsed = countdown ?: state.currentBulletElapsed(now),
                         style = MaterialTheme.typography.titleMedium,
                         color = if (countdown != null && countdown.isNegative()) MaterialTheme.colorScheme.error
                                 else MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Spacer(Modifier.width(8.dp))
                     DeltaTimerDisplay(
-                        delta = state.globalScheduleDelta,
+                        delta = state.globalScheduleDelta(now),
                         style = MaterialTheme.typography.titleMedium,
                     )
                 }

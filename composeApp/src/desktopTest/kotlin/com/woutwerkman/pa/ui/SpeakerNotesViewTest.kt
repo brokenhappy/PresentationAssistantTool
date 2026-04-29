@@ -12,7 +12,6 @@ import com.woutwerkman.pa.ui.control.SpeakerNotesView
 import com.woutwerkman.pa.ui.theme.AppTheme
 import kotlin.test.Test
 import kotlin.test.assertTrue
-import kotlin.time.Duration.Companion.seconds
 
 @OptIn(ExperimentalTestApi::class)
 class SpeakerNotesViewTest {
@@ -31,12 +30,16 @@ class SpeakerNotesViewTest {
         setContent {
             AppTheme {
                 SpeakerNotesView(
-                    state = PresentationState(
-                        profile = profile,
-                        isActive = true,
-                        currentBulletIndex = 1,
-                        currentBulletElapsed = 15.seconds,
-                    ),
+                    state = run {
+                        val now = com.woutwerkman.pa.platform.currentTimeMs()
+                        PresentationState(
+                            profile = profile,
+                            isActive = true,
+                            currentBulletIndex = 1,
+                            presentationStartTime = now - 15_000,
+                            bulletStartTime = now - 15_000,
+                        )
+                    },
                     onSwitchToControl = {},
                 )
             }
@@ -104,18 +107,23 @@ class SpeakerNotesViewTest {
         setContent {
             AppTheme {
                 SpeakerNotesView(
-                    state = PresentationState(
-                        profile = profile,
-                        isActive = true,
-                        currentBulletIndex = 0,
-                        currentBulletElapsed = 90.seconds,
-                    ),
+                    state = run {
+                        val now = com.woutwerkman.pa.platform.currentTimeMs()
+                        PresentationState(
+                            profile = profile,
+                            isActive = true,
+                            currentBulletIndex = 0,
+                            presentationStartTime = now - 120_000,
+                            bulletStartTime = now - 90_000,
+                        )
+                    },
                     onSwitchToControl = {},
                 )
             }
         }
 
         onNode(hasText("1:30")).assertIsDisplayed()
+        onNode(hasText("2:00")).assertIsDisplayed()
     }
 
     @Test

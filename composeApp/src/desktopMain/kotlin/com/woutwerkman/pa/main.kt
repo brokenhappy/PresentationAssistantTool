@@ -187,7 +187,7 @@ private fun ForwardEventsToMobile(
                     is PresentationEvent.LoadProfile,
                     is PresentationEvent.CloseProfile,
                         ->
-                        bleService.sendMessage(BleMessage.FullSync(engine.state.value.forBleSync()))
+                        bleService.sendMessage(BleMessage.FullSync(engine.state.value.forBleSync(com.woutwerkman.pa.platform.currentTimeMs())))
                     else -> bleService.sendMessage(BleMessage.Event(event))
                 }
             }
@@ -207,7 +207,7 @@ private fun HandleIncomingBleMessages(
             when (message) {
                 is BleMessage.Event -> engine.onEvent(message.event)
                 is BleMessage.SyncRequest ->
-                    bleService.sendMessage(BleMessage.FullSync(currentState.forBleSync()))
+                    bleService.sendMessage(BleMessage.FullSync(currentState.forBleSync(com.woutwerkman.pa.platform.currentTimeMs())))
                 is BleMessage.FullSync -> {}
                 is BleMessage.Vibrate -> {}
             }
@@ -223,7 +223,7 @@ private fun SyncStateOnConnect(
 ) {
     LaunchedEffect(connectedPeers) {
         if (connectedPeers.isNotEmpty()) {
-            bleService.sendMessage(BleMessage.FullSync(engine.state.value.forBleSync()))
+            bleService.sendMessage(BleMessage.FullSync(engine.state.value.forBleSync(com.woutwerkman.pa.platform.currentTimeMs())))
         }
     }
 }

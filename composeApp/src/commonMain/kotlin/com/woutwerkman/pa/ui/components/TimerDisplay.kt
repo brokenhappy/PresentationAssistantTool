@@ -2,11 +2,12 @@ package com.woutwerkman.pa.ui.components
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
+import kotlinx.coroutines.delay
 import kotlin.time.Duration
 
 @Composable
@@ -62,4 +63,16 @@ fun formatTimestamp(epochMs: Long): String {
     val hours = (totalSeconds / 3600) % 24
     val minutes = (totalSeconds / 60) % 60
     return "${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}"
+}
+
+@Composable
+fun rememberNow(ticking: Boolean): Long {
+    var now by remember { mutableLongStateOf(com.woutwerkman.pa.platform.currentTimeMs()) }
+    LaunchedEffect(ticking) {
+        while (ticking) {
+            now = com.woutwerkman.pa.platform.currentTimeMs()
+            delay(100)
+        }
+    }
+    return now
 }

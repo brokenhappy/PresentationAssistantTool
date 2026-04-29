@@ -3,8 +3,6 @@ package com.woutwerkman.pa.presentation
 import com.woutwerkman.pa.model.RunRecord
 import com.woutwerkman.pa.repository.ProfileRepository
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -31,7 +29,6 @@ class PresentationEngine(
     private val _error = MutableSharedFlow<String>()
     val error: SharedFlow<String> = _error.asSharedFlow()
 
-    private var timerJob: Job? = null
     private val _profilePath = MutableStateFlow<String?>(null)
     val profilePath: StateFlow<String?> = _profilePath.asStateFlow()
 
@@ -66,8 +63,6 @@ class PresentationEngine(
     }
 
     private fun closeProfile() {
-        timerJob?.cancel()
-        timerJob = null
         _profilePath.value = null
         _state.value = PresentationState()
         scope.launch { _appliedEvents.emit(PresentationEvent.CloseProfile) }
@@ -82,15 +77,12 @@ class PresentationEngine(
             it.copy(
                 isActive = true,
                 currentBulletIndex = 0,
-                elapsed = Duration.ZERO,
-                currentBulletElapsed = Duration.ZERO,
                 currentRunDurations = emptyMap(),
-                bulletStartTime = now,
                 presentationStartTime = now,
+                bulletStartTime = now,
             )
         }
 
-        startTimer()
         scope.launch { _appliedEvents.emit(PresentationEvent.Start) }
     }
 
@@ -112,14 +104,10 @@ class PresentationEngine(
         }
 
         val nextIndex = current.currentBulletIndex + 1
-        val nextKey = current.profile?.keyAt(nextIndex)
-        val nextAccumulated = if (nextKey != null) updatedDurations[nextKey] ?: Duration.ZERO else Duration.ZERO
-
         val now = clock()
         _state.update {
             it.copy(
                 currentBulletIndex = nextIndex,
-                currentBulletElapsed = nextAccumulated,
                 currentRunDurations = updatedDurations,
                 bulletStartTime = now,
             )
@@ -140,14 +128,10 @@ class PresentationEngine(
             current.currentRunDurations
         }
 
-        val targetKey = current.profile?.keyAt(index)
-        val targetAccumulated = if (targetKey != null) updatedDurations[targetKey] ?: Duration.ZERO else Duration.ZERO
-
         val now = clock()
         _state.update {
             it.copy(
                 currentBulletIndex = index,
-                currentBulletElapsed = targetAccumulated,
                 currentRunDurations = updatedDurations,
                 bulletStartTime = now,
             )
@@ -182,9 +166,6 @@ class PresentationEngine(
     }
 
     private fun finishPresentation(durations: Map<String, Duration>) {
-        timerJob?.cancel()
-        timerJob = null
-
         scope.launch {
             val current = _state.value
             val profile = current.profile ?: return@launch
@@ -208,30 +189,12 @@ class PresentationEngine(
                     isActive = false,
                     runs = updatedRuns,
                     currentBulletIndex = 0,
-                    elapsed = Duration.ZERO,
-                    currentBulletElapsed = Duration.ZERO,
                     currentRunDurations = emptyMap(),
+                    presentationStartTime = 0L,
+                    bulletStartTime = 0L,
                 )
             }
             _appliedEvents.emit(PresentationEvent.Advance)
-        }
-    }
-
-    private fun startTimer() {
-        timerJob?.cancel()
-        timerJob = scope.launch {
-            while (true) {
-                delay(100.milliseconds)
-                val now = clock()
-                _state.update {
-                    val currentKey = it.currentBulletKey
-                    val accumulated = if (currentKey != null) it.currentRunDurations[currentKey] ?: Duration.ZERO else Duration.ZERO
-                    it.copy(
-                        elapsed = (now - it.presentationStartTime).milliseconds,
-                        currentBulletElapsed = accumulated + (now - it.bulletStartTime).milliseconds,
-                    )
-                }
-            }
         }
     }
 

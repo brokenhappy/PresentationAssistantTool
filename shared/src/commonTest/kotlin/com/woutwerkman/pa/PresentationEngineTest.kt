@@ -247,16 +247,15 @@ class PresentationEngineTest {
     }
 
     @Test
-    fun timerUpdatesElapsedTime() = runTest {
+    fun elapsedTimeComputedFromTimestamps() = runTest {
         val engine = createEngine()
         loadAndStart(engine)
 
         advanceTimeBy(5_000)
-        runCurrent()
 
         val state = engine.state.value
-        assertEquals(5.seconds, state.elapsed)
-        assertEquals(5.seconds, state.currentBulletElapsed)
+        assertEquals(5.seconds, state.elapsed(currentTime))
+        assertEquals(5.seconds, state.currentBulletElapsed(currentTime))
     }
 
     @Test
