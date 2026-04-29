@@ -47,11 +47,11 @@ data class PresentationState(
             return stats.averageDurations[key]
         }
 
-    val remainingVsAverage: Duration?
+    val bulletCountdown: Duration?
         get() {
             val avg = averageForCurrentBullet ?: return null
             if (avg == Duration.ZERO) return null
-            return currentBulletElapsed - avg
+            return avg - currentBulletElapsed
         }
 
     val globalScheduleDelta: Duration?

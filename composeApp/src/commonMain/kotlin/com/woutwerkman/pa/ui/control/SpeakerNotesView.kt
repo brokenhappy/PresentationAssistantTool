@@ -38,7 +38,7 @@ fun SpeakerNotesView(
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     TimerDisplay(
-                        elapsed = state.currentBulletElapsed,
+                        elapsed = state.bulletCountdown ?: state.currentBulletElapsed,
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

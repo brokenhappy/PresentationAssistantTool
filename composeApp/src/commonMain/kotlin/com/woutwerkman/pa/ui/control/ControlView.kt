@@ -41,7 +41,7 @@ fun ControlView(
             Spacer(Modifier.height(32.dp))
 
             TimerDisplay(
-                elapsed = state.currentBulletElapsed,
+                elapsed = state.bulletCountdown ?: state.currentBulletElapsed,
                 style = MaterialTheme.typography.displayMedium,
             )
 

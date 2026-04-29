@@ -109,7 +109,7 @@ private fun ActiveState(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         TimerDisplay(
-            elapsed = state.currentBulletElapsed,
+            elapsed = state.bulletCountdown ?: state.currentBulletElapsed,
             style = MaterialTheme.typography.titleMedium,
         )
         Spacer(Modifier.width(4.dp))

@@ -48,10 +48,13 @@ fun DeltaTimerDisplay(
 }
 
 fun formatTimer(duration: Duration): String {
-    val totalSeconds = duration.inWholeSeconds
+    val negative = duration.isNegative()
+    val abs = if (negative) duration.absoluteValue else duration
+    val totalSeconds = abs.inWholeSeconds
     val minutes = totalSeconds / 60
     val seconds = totalSeconds % 60
-    return "$minutes:${seconds.toString().padStart(2, '0')}"
+    val formatted = "$minutes:${seconds.toString().padStart(2, '0')}"
+    return if (negative) "-$formatted" else formatted
 }
 
 fun formatTimestamp(epochMs: Long): String {
