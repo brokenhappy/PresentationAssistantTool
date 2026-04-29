@@ -20,13 +20,15 @@ import androidx.compose.ui.window.*
 import com.woutwerkman.pa.ble.*
 import com.woutwerkman.pa.platform.GlobalShortcutManager
 import com.woutwerkman.pa.platform.InputMonitoringPermission
+import com.woutwerkman.pa.platform.FileSystem
 import com.woutwerkman.pa.platform.PlatformFileSystem
 import com.woutwerkman.pa.platform.SpotlightManager
 import com.woutwerkman.pa.presentation.PresentationEngine
 import com.woutwerkman.pa.presentation.PresentationEvent
 import com.woutwerkman.pa.presentation.PresentationState
-import com.woutwerkman.pa.presentation.TimingAlerts
-import com.woutwerkman.pa.repository.AppSettings
+import com.woutwerkman.pa.presentation.runTimingAlerts
+import com.woutwerkman.pa.repository.loadAppSettings
+import com.woutwerkman.pa.repository.setLastProfilePath
 import com.woutwerkman.pa.repository.ProfileRepository
 import com.woutwerkman.pa.ui.expanded.ExpandedView
 import com.woutwerkman.pa.ui.minified.MinifiedView
@@ -45,7 +47,6 @@ fun main() {
         val engineScope = remember { CoroutineScope(SupervisorJob() + Dispatchers.Default) }
         val fileSystem = remember { PlatformFileSystem(System.getProperty("user.home") + "/.presentationassistant") }
         val repository = remember { ProfileRepository(fileSystem) }
-        val appSettings = remember { AppSettings(fileSystem) }
         val engine = remember { PresentationEngine(repository, engineScope) }
         val peerStorage = remember { PeerStorage(fileSystem) }
         val bleService = remember { DesktopBleService(engineScope, peerStorage) }
@@ -62,8 +63,8 @@ fun main() {
 
         val trayIcon = remember { createTrayIcon() }
 
-        LoadLastProfile(engine, appSettings)
-        PersistProfilePath(engine, appSettings)
+        LoadLastProfile(engine, fileSystem)
+        PersistProfilePath(engine, fileSystem)
         ForwardEventsToMobile(engine, bleService, connectedPeers)
         HandleIncomingBleMessages(engine, bleService, state)
         SyncStateOnConnect(engine, bleService, connectedPeers)
@@ -152,9 +153,9 @@ fun main() {
 }
 
 @Composable
-private fun LoadLastProfile(engine: PresentationEngine, appSettings: AppSettings) {
+private fun LoadLastProfile(engine: PresentationEngine, fileSystem: FileSystem) {
     LaunchedEffect(Unit) {
-        val lastPath = appSettings.load().lastProfilePath
+        val lastPath = loadAppSettings(fileSystem).lastProfilePath
         if (lastPath != null && File(lastPath).exists()) {
             engine.onEvent(PresentationEvent.LoadProfile(lastPath))
         }
@@ -162,10 +163,10 @@ private fun LoadLastProfile(engine: PresentationEngine, appSettings: AppSettings
 }
 
 @Composable
-private fun PersistProfilePath(engine: PresentationEngine, appSettings: AppSettings) {
+private fun PersistProfilePath(engine: PresentationEngine, fileSystem: FileSystem) {
     LaunchedEffect(Unit) {
         engine.profilePath.collect { path ->
-            appSettings.setLastProfilePath(path)
+            setLastProfilePath(fileSystem, path)
         }
     }
 }
@@ -239,10 +240,10 @@ private fun SpotlightTimingAlerts(
     bleService: DesktopBleService,
 ) {
     LaunchedEffect(spotlightManager) {
-        TimingAlerts(engine.state) { duration ->
+        runTimingAlerts(engine.state) { duration ->
             spotlightManager.vibrate(duration)
             bleService.sendMessage(BleMessage.Vibrate(duration))
-        }.run()
+        }
     }
 }
 
