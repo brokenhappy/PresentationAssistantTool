@@ -19,6 +19,7 @@ private val log = LoggerFactory.getLogger(DesktopBleService::class.java)
 class DesktopBleService(
     private val scope: CoroutineScope,
     private val peerStorage: PeerStorage,
+    private val clock: Clock = Clock.System,
 ) : BleService {
 
     private val _connectionState = MutableStateFlow(BleConnectionState.Disconnected)
@@ -214,7 +215,7 @@ class DesktopBleService(
 
     private fun observeMessages(deviceId: String, p: Peripheral) {
         observeJobs[deviceId]?.cancel()
-        lastHeartbeat[deviceId] = Clock.System.now()
+        lastHeartbeat[deviceId] = clock.now()
         observeJobs[deviceId] = scope.launch {
             // Kable's observe() Flow stays active across disconnections by design,
             // so we need these separate monitors to detect disconnection.
@@ -226,7 +227,7 @@ class DesktopBleService(
                 while (isActive) {
                     delay(BleConfig.HEARTBEAT_TIMEOUT)
                     val last = lastHeartbeat[deviceId] ?: break
-                    if ((Clock.System.now() - last) > BleConfig.HEARTBEAT_TIMEOUT) {
+                    if ((clock.now() - last) > BleConfig.HEARTBEAT_TIMEOUT) {
                         handleDisconnect(deviceId)
                         break
                     }
@@ -235,7 +236,7 @@ class DesktopBleService(
             try {
                 p.observe(commandChar).collect { bytes ->
                     if (bytes.isNotEmpty() && bytes[0] == HEARTBEAT_BYTE) {
-                        lastHeartbeat[deviceId] = Clock.System.now()
+                        lastHeartbeat[deviceId] = clock.now()
                         return@collect
                     }
                     try {

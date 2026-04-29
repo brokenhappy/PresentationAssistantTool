@@ -16,6 +16,7 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.time.Clock
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
@@ -29,7 +30,9 @@ class TimingAlertsTest {
         bulletPoints = mapOf("a" to "First", "b" to "Second"),
     )
 
-    private fun TestScope.now() = Instant.fromEpochMilliseconds(currentTime)
+    private fun TestScope.testClock() = object : Clock {
+        override fun now(): Instant = Instant.fromEpochMilliseconds(currentTime)
+    }
 
     private fun TestScope.stateWithAverage(
         average: Duration,
@@ -46,8 +49,8 @@ class TimingAlertsTest {
             runs = listOf(run),
             isActive = true,
             currentBulletIndex = bulletIndex,
-            bulletStartTime = now() - alreadyElapsed,
-            presentationStartTime = now() - alreadyElapsed,
+            bulletStartTime = Instant.fromEpochMilliseconds(currentTime) - alreadyElapsed,
+            presentationStartTime = Instant.fromEpochMilliseconds(currentTime) - alreadyElapsed,
         )
     }
 
@@ -59,7 +62,7 @@ class TimingAlertsTest {
         val vibrations = mutableListOf<Pair<Long, Duration>>()
 
         val job = launch {
-            runTimingAlerts(state, { now() }) { duration ->
+            runTimingAlerts(state, testClock()) { duration ->
                 vibrations.add(currentTime to duration)
             }
         }
@@ -82,7 +85,7 @@ class TimingAlertsTest {
         val vibrations = mutableListOf<Pair<Long, Duration>>()
 
         val job = launch {
-            runTimingAlerts(state, { now() }) { duration ->
+            runTimingAlerts(state, testClock()) { duration ->
                 vibrations.add(currentTime to duration)
             }
         }
@@ -104,7 +107,7 @@ class TimingAlertsTest {
         val vibrations = mutableListOf<Pair<Long, Duration>>()
 
         val job = launch {
-            runTimingAlerts(state, { now() }) { duration ->
+            runTimingAlerts(state, testClock()) { duration ->
                 vibrations.add(currentTime to duration)
                 kotlinx.coroutines.delay(duration)
             }
@@ -128,7 +131,7 @@ class TimingAlertsTest {
         val vibrations = mutableListOf<Pair<Long, Duration>>()
 
         val job = launch {
-            runTimingAlerts(state, { now() }) { duration ->
+            runTimingAlerts(state, testClock()) { duration ->
                 vibrations.add(currentTime to duration)
             }
         }
@@ -153,7 +156,7 @@ class TimingAlertsTest {
         val vibrations = mutableListOf<Pair<Long, Duration>>()
 
         val job = launch {
-            runTimingAlerts(state, { now() }) { duration ->
+            runTimingAlerts(state, testClock()) { duration ->
                 vibrations.add(currentTime to duration)
             }
         }
@@ -181,7 +184,7 @@ class TimingAlertsTest {
         val vibrations = mutableListOf<Duration>()
 
         val job = launch {
-            runTimingAlerts(state, { now() }) { vibrations.add(it) }
+            runTimingAlerts(state, testClock()) { vibrations.add(it) }
         }
 
         advanceTimeBy(30.seconds)
@@ -199,7 +202,7 @@ class TimingAlertsTest {
         val vibrations = mutableListOf<Duration>()
 
         val job = launch {
-            runTimingAlerts(state, { now() }) { vibrations.add(it) }
+            runTimingAlerts(state, testClock()) { vibrations.add(it) }
         }
 
         advanceTimeBy(30.seconds)
@@ -215,7 +218,7 @@ class TimingAlertsTest {
         val vibrations = mutableListOf<Pair<Long, Duration>>()
 
         val job = launch {
-            runTimingAlerts(state, { now() }) { duration ->
+            runTimingAlerts(state, testClock()) { duration ->
                 vibrations.add(currentTime to duration)
             }
         }
@@ -237,7 +240,7 @@ class TimingAlertsTest {
         val vibrations = mutableListOf<Pair<Long, Duration>>()
 
         val job = launch {
-            runTimingAlerts(state, { now() }) { duration ->
+            runTimingAlerts(state, testClock()) { duration ->
                 vibrations.add(currentTime to duration)
             }
         }
@@ -259,7 +262,7 @@ class TimingAlertsTest {
         val vibrations = mutableListOf<Duration>()
 
         val job = launch {
-            runTimingAlerts(state, { now() }) { vibrations.add(it) }
+            runTimingAlerts(state, testClock()) { vibrations.add(it) }
         }
 
         state.value = stateWithAverage(20.seconds, alreadyElapsed = 25.seconds)
@@ -277,7 +280,7 @@ class TimingAlertsTest {
         val vibrations = mutableListOf<Duration>()
 
         val job = launch {
-            runTimingAlerts(state, { now() }) { vibrations.add(it) }
+            runTimingAlerts(state, testClock()) { vibrations.add(it) }
         }
 
         state.value = stateWithAverage(20.seconds)

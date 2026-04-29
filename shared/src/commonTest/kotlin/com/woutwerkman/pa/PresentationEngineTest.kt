@@ -20,6 +20,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.Instant
 
@@ -45,14 +46,16 @@ class PresentationEngineTest {
 
     private var runIdCounter = 0
 
-    private fun TestScope.now() = Instant.fromEpochMilliseconds(currentTime)
+    private fun TestScope.testClock() = object : Clock {
+        override fun now(): Instant = Instant.fromEpochMilliseconds(currentTime)
+    }
 
     private fun TestScope.createEngine(fileSystem: InMemoryFileSystem = createFileSystem()): PresentationEngine {
         runIdCounter = 0
         return PresentationEngine(
             repository = ProfileRepository(fileSystem),
             scope = backgroundScope,
-            clock = { now() },
+            clock = testClock(),
             idGenerator = { "run-${runIdCounter++}" },
         )
     }
@@ -257,8 +260,8 @@ class PresentationEngineTest {
         advanceTimeBy(5.seconds)
 
         val state = engine.state.value
-        assertEquals(5.seconds, state.elapsed(now()))
-        assertEquals(5.seconds, state.currentBulletElapsed(now()))
+        assertEquals(5.seconds, state.elapsed(Instant.fromEpochMilliseconds(currentTime)))
+        assertEquals(5.seconds, state.currentBulletElapsed(Instant.fromEpochMilliseconds(currentTime)))
     }
 
     @Test

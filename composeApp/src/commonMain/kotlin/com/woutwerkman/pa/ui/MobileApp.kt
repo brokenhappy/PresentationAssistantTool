@@ -34,6 +34,7 @@ fun MobileApp(
     deviceId: String,
     onKeepAwakeChanged: (Boolean) -> Unit,
     onVibrate: (Duration) -> Unit = {},
+    clock: Clock = Clock.System,
 ) {
     val connectionState by bleService.connectionState.collectAsState()
     val connectedPeers by bleService.connectedPeers.collectAsState()
@@ -46,7 +47,7 @@ fun MobileApp(
         bleService.incomingMessages.collect { message ->
             when (message) {
                 is BleMessage.FullSync -> {
-                    val now = Clock.System.now()
+                    val now = clock.now()
                     val received = message.state
                     state = if (received.isActive) received.copy(
                         presentationStartTime = now - received.presentationStartTime.toEpochMilliseconds().milliseconds,
@@ -54,7 +55,7 @@ fun MobileApp(
                     ) else received
                 }
                 is BleMessage.Event -> {
-                    val now = Clock.System.now()
+                    val now = clock.now()
                     applyRemoteEvent(state, message.event, now)?.let { state = it }
                 }
                 is BleMessage.SyncRequest -> {}

@@ -18,7 +18,7 @@ import kotlin.time.Instant
 class PresentationEngine(
     private val repository: ProfileRepository,
     private val scope: CoroutineScope,
-    private val clock: () -> Instant = { Clock.System.now() },
+    private val clock: Clock = Clock.System,
     private val idGenerator: () -> String = { defaultGenerateRunId() },
 ) {
     private val _state = MutableStateFlow(PresentationState())
@@ -73,7 +73,7 @@ class PresentationEngine(
         val current = _state.value
         if (current.profile == null || current.isActive) return
 
-        val now = clock()
+        val now = clock.now()
         _state.update {
             it.copy(
                 isActive = true,
@@ -95,7 +95,7 @@ class PresentationEngine(
         }
 
         val key = current.currentBulletKey ?: return
-        val visitDuration = clock() - current.bulletStartTime
+        val visitDuration = clock.now() - current.bulletStartTime
         val accumulated = (current.currentRunDurations[key] ?: Duration.ZERO) + visitDuration
         val updatedDurations = current.currentRunDurations + (key to accumulated)
 
@@ -105,7 +105,7 @@ class PresentationEngine(
         }
 
         val nextIndex = current.currentBulletIndex + 1
-        val now = clock()
+        val now = clock.now()
         _state.update {
             it.copy(
                 currentBulletIndex = nextIndex,
@@ -121,7 +121,7 @@ class PresentationEngine(
         if (!current.isActive || index < 0 || index >= current.bulletCount) return
 
         val key = current.currentBulletKey
-        val visitDuration = clock() - current.bulletStartTime
+        val visitDuration = clock.now() - current.bulletStartTime
         val updatedDurations = if (key != null) {
             val accumulated = (current.currentRunDurations[key] ?: Duration.ZERO) + visitDuration
             current.currentRunDurations + (key to accumulated)
@@ -129,7 +129,7 @@ class PresentationEngine(
             current.currentRunDurations
         }
 
-        val now = clock()
+        val now = clock.now()
         _state.update {
             it.copy(
                 currentBulletIndex = index,
@@ -173,7 +173,7 @@ class PresentationEngine(
 
             val run = RunRecord(
                 id = idGenerator(),
-                timestamp = clock(),
+                timestamp = clock.now(),
                 bulletPointDurations = durations,
             )
             val updatedRuns = current.runs + run

@@ -70,11 +70,11 @@ fun formatTimestamp(instant: Instant): String {
 }
 
 @Composable
-fun rememberNow(ticking: Boolean): Instant {
-    var now by remember { mutableStateOf(Clock.System.now()) }
+fun rememberNow(ticking: Boolean, clock: Clock = Clock.System): Instant {
+    var now by remember { mutableStateOf(clock.now()) }
     LaunchedEffect(ticking) {
         while (ticking) {
-            now = Clock.System.now()
+            now = clock.now()
             delay(100.milliseconds)
         }
     }

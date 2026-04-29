@@ -44,12 +44,13 @@ import java.io.File
 fun main() {
     InputMonitoringPermission.request()
     application {
+        val clock: kotlin.time.Clock = kotlin.time.Clock.System
         val engineScope = remember { CoroutineScope(SupervisorJob() + Dispatchers.Default) }
         val fileSystem = remember { PlatformFileSystem(System.getProperty("user.home") + "/.presentationassistant") }
         val repository = remember { ProfileRepository(fileSystem) }
-        val engine = remember { PresentationEngine(repository, engineScope) }
+        val engine = remember { PresentationEngine(repository, engineScope, clock) }
         val peerStorage = remember { PeerStorage(fileSystem) }
-        val bleService = remember { DesktopBleService(engineScope, peerStorage) }
+        val bleService = remember { DesktopBleService(engineScope, peerStorage, clock) }
         val state by engine.state.collectAsState()
         val connectedPeers by bleService.connectedPeers.collectAsState()
         val bleConnectionState by bleService.connectionState.collectAsState()
@@ -66,9 +67,9 @@ fun main() {
 
         LoadLastProfile(engine, fileSystem)
         PersistProfilePath(engine, fileSystem)
-        ForwardEventsToMobile(engine, bleService, connectedPeers)
-        HandleIncomingBleMessages(engine, bleService, state)
-        SyncStateOnConnect(engine, bleService, connectedPeers)
+        ForwardEventsToMobile(engine, bleService, connectedPeers, clock)
+        HandleIncomingBleMessages(engine, bleService, state, clock)
+        SyncStateOnConnect(engine, bleService, connectedPeers, clock)
         AutoReconnect(bleService)
 
         DisposableEffect(engine) {
@@ -178,6 +179,7 @@ private fun ForwardEventsToMobile(
     engine: PresentationEngine,
     bleService: DesktopBleService,
     connectedPeers: List<PairedPeer>,
+    clock: kotlin.time.Clock,
 ) {
     val currentPeers by rememberUpdatedState(connectedPeers)
     LaunchedEffect(bleService) {
@@ -187,7 +189,7 @@ private fun ForwardEventsToMobile(
                     is PresentationEvent.LoadProfile,
                     is PresentationEvent.CloseProfile,
                         ->
-                        bleService.sendMessage(BleMessage.FullSync(engine.state.value.forBleSync(kotlin.time.Clock.System.now())))
+                        bleService.sendMessage(BleMessage.FullSync(engine.state.value.forBleSync(clock.now())))
                     else -> bleService.sendMessage(BleMessage.Event(event))
                 }
             }
@@ -200,6 +202,7 @@ private fun HandleIncomingBleMessages(
     engine: PresentationEngine,
     bleService: DesktopBleService,
     state: PresentationState,
+    clock: kotlin.time.Clock,
 ) {
     val currentState by rememberUpdatedState(state)
     LaunchedEffect(bleService) {
@@ -207,7 +210,7 @@ private fun HandleIncomingBleMessages(
             when (message) {
                 is BleMessage.Event -> engine.onEvent(message.event)
                 is BleMessage.SyncRequest ->
-                    bleService.sendMessage(BleMessage.FullSync(currentState.forBleSync(kotlin.time.Clock.System.now())))
+                    bleService.sendMessage(BleMessage.FullSync(currentState.forBleSync(clock.now())))
                 is BleMessage.FullSync -> {}
                 is BleMessage.Vibrate -> {}
             }
@@ -220,10 +223,11 @@ private fun SyncStateOnConnect(
     engine: PresentationEngine,
     bleService: DesktopBleService,
     connectedPeers: List<PairedPeer>,
+    clock: kotlin.time.Clock,
 ) {
     LaunchedEffect(connectedPeers) {
         if (connectedPeers.isNotEmpty()) {
-            bleService.sendMessage(BleMessage.FullSync(engine.state.value.forBleSync(kotlin.time.Clock.System.now())))
+            bleService.sendMessage(BleMessage.FullSync(engine.state.value.forBleSync(clock.now())))
         }
     }
 }
