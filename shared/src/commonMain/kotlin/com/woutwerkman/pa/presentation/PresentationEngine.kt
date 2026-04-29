@@ -32,8 +32,6 @@ class PresentationEngine(
     val error: SharedFlow<String> = _error.asSharedFlow()
 
     private var timerJob: Job? = null
-    private var bulletStartTime: Long = 0L
-    private var presentationStartTime: Long = 0L
     private val _profilePath = MutableStateFlow<String?>(null)
     val profilePath: StateFlow<String?> = _profilePath.asStateFlow()
 
@@ -79,9 +77,7 @@ class PresentationEngine(
         val current = _state.value
         if (current.profile == null || current.isActive) return
 
-        presentationStartTime = clock()
-        bulletStartTime = presentationStartTime
-
+        val now = clock()
         _state.update {
             it.copy(
                 isActive = true,
@@ -89,6 +85,8 @@ class PresentationEngine(
                 elapsed = Duration.ZERO,
                 currentBulletElapsed = Duration.ZERO,
                 currentRunDurations = emptyMap(),
+                bulletStartTime = now,
+                presentationStartTime = now,
             )
         }
 
@@ -104,7 +102,7 @@ class PresentationEngine(
         }
 
         val key = current.currentBulletKey ?: return
-        val visitDuration = (clock() - bulletStartTime).milliseconds
+        val visitDuration = (clock() - current.bulletStartTime).milliseconds
         val accumulated = (current.currentRunDurations[key] ?: Duration.ZERO) + visitDuration
         val updatedDurations = current.currentRunDurations + (key to accumulated)
 
@@ -117,12 +115,13 @@ class PresentationEngine(
         val nextKey = current.profile?.keyAt(nextIndex)
         val nextAccumulated = if (nextKey != null) updatedDurations[nextKey] ?: Duration.ZERO else Duration.ZERO
 
-        bulletStartTime = clock()
+        val now = clock()
         _state.update {
             it.copy(
                 currentBulletIndex = nextIndex,
                 currentBulletElapsed = nextAccumulated,
                 currentRunDurations = updatedDurations,
+                bulletStartTime = now,
             )
         }
         scope.launch { _appliedEvents.emit(PresentationEvent.Advance) }
@@ -133,7 +132,7 @@ class PresentationEngine(
         if (!current.isActive || index < 0 || index >= current.bulletCount) return
 
         val key = current.currentBulletKey
-        val visitDuration = (clock() - bulletStartTime).milliseconds
+        val visitDuration = (clock() - current.bulletStartTime).milliseconds
         val updatedDurations = if (key != null) {
             val accumulated = (current.currentRunDurations[key] ?: Duration.ZERO) + visitDuration
             current.currentRunDurations + (key to accumulated)
@@ -144,12 +143,13 @@ class PresentationEngine(
         val targetKey = current.profile?.keyAt(index)
         val targetAccumulated = if (targetKey != null) updatedDurations[targetKey] ?: Duration.ZERO else Duration.ZERO
 
-        bulletStartTime = clock()
+        val now = clock()
         _state.update {
             it.copy(
                 currentBulletIndex = index,
                 currentBulletElapsed = targetAccumulated,
                 currentRunDurations = updatedDurations,
+                bulletStartTime = now,
             )
         }
         scope.launch { _appliedEvents.emit(PresentationEvent.GoTo(index)) }
@@ -227,8 +227,8 @@ class PresentationEngine(
                     val currentKey = it.currentBulletKey
                     val accumulated = if (currentKey != null) it.currentRunDurations[currentKey] ?: Duration.ZERO else Duration.ZERO
                     it.copy(
-                        elapsed = (now - presentationStartTime).milliseconds,
-                        currentBulletElapsed = accumulated + (now - bulletStartTime).milliseconds,
+                        elapsed = (now - it.presentationStartTime).milliseconds,
+                        currentBulletElapsed = accumulated + (now - it.bulletStartTime).milliseconds,
                     )
                 }
             }

@@ -26,12 +26,16 @@ class SpotlightManager(
     private val _connected = MutableStateFlow(false)
     val connected: StateFlow<Boolean> = _connected.asStateFlow()
 
+    private data class UsbConnection(
+        val device: HidDevice,
+        val devIdx: Byte,
+        val featIdx: Byte,
+        val presenterCtrlIdx: Byte?,
+        val channel: HidppChannel,
+    )
+
     private var hidServices: HidServices? = null
-    private var device: HidDevice? = null
-    private var activeDevIdx: Byte = 0
-    private var activeFeatIdx: Byte = 0
-    private var presenterCtrlIdx: Byte? = null
-    private var vibrateChannel: HidppChannel? = null
+    private var usbConnection: UsbConnection? = null
     private var pollJob: Job? = null
     private var readJob: Job? = null
     private var nativeMonitor: NativeHidMonitor? = null
@@ -49,7 +53,7 @@ class SpotlightManager(
         }
         pollJob = scope.launch(Dispatchers.IO) {
             while (isActive) {
-                if (device == null && nativeMonitor == null) tryConnect()
+                if (usbConnection == null && nativeMonitor == null) tryConnect()
                 delay(5.seconds)
             }
         }
@@ -66,15 +70,11 @@ class SpotlightManager(
             try { bleLib?.spotlight_ble_cleanup() } catch (_: Exception) {}
             btBleActive = false
         }
-        vibrateChannel = null
-        device?.let { dev ->
-            if (activeFeatIdx != 0.toByte()) {
-                try { undivertButtons(dev) } catch (_: Exception) {}
-            }
-            try { dev.close() } catch (_: Exception) {}
+        usbConnection?.let { usb ->
+            try { undivertButtons(usb) } catch (_: Exception) {}
+            try { usb.device.close() } catch (_: Exception) {}
         }
-        device = null
-        presenterCtrlIdx = null
+        usbConnection = null
         try { hidServices?.shutdown() } catch (_: Exception) {}
         hidServices = null
         _connected.value = false
@@ -103,11 +103,13 @@ class SpotlightManager(
                     cleanupBtBle()
                     divertButton(candidate, DEV_WIRELESS, featIdx, CID_NEXT)
                     divertButton(candidate, DEV_WIRELESS, featIdx, CID_BACK)
-                    presenterCtrlIdx = findFeatureIndex(channel, DEV_WIRELESS, 0x1A, 0x00)
-                    device = candidate
-                    activeDevIdx = DEV_WIRELESS
-                    activeFeatIdx = featIdx
-                    vibrateChannel = channel
+                    usbConnection = UsbConnection(
+                        device = candidate,
+                        devIdx = DEV_WIRELESS,
+                        featIdx = featIdx,
+                        presenterCtrlIdx = findFeatureIndex(channel, DEV_WIRELESS, 0x1A, 0x00),
+                        channel = channel,
+                    )
                     _connected.value = true
                     startReadLoop(candidate, featIdx)
                     return true
@@ -188,14 +190,14 @@ class SpotlightManager(
         Hid4JavaChannel(dev).readHidpp(500)
     }
 
-    private fun undivertButtons(dev: HidDevice) {
+    private fun undivertButtons(usb: UsbConnection) {
         for (cid in listOf(CID_NEXT, CID_BACK)) {
             val params = ByteArray(16)
             params[0] = (cid shr 8).toByte()
             params[1] = (cid and 0xFF).toByte()
             params[2] = 0x02 // divert=0, dvalid=1
-            val msg = byteArrayOf(activeDevIdx, activeFeatIdx, swFunc(3)) + params
-            try { dev.write(msg, 20, REPORT_LONG) } catch (_: Exception) {}
+            val msg = byteArrayOf(usb.devIdx, usb.featIdx, swFunc(3)) + params
+            try { usb.device.write(msg, 20, REPORT_LONG) } catch (_: Exception) {}
         }
     }
 
@@ -208,16 +210,16 @@ class SpotlightManager(
             delay(duration)
             return
         }
-        val ch = vibrateChannel ?: return
-        val pcIdx = presenterCtrlIdx ?: return
+        val usb = usbConnection ?: return
+        val pcIdx = usb.presenterCtrlIdx ?: return
         withContext(Dispatchers.IO) {
             try {
                 val params = ByteArray(16)
                 params[0] = length.toByte()
                 params[1] = 0xE8.toByte()
                 params[2] = 0x80.toByte()
-                val msg = byteArrayOf(activeDevIdx, pcIdx, swFunc(1)) + params
-                ch.write(msg, 20, REPORT_LONG)
+                val msg = byteArrayOf(usb.devIdx, pcIdx, swFunc(1)) + params
+                usb.channel.write(msg, 20, REPORT_LONG)
             } catch (e: Exception) { log.debug("USB vibrate failed", e) }
         }
         delay(duration)
@@ -267,10 +269,8 @@ class SpotlightManager(
     }
 
     private fun handleDisconnect() {
-        try { device?.close() } catch (_: Exception) {}
-        device = null
-        vibrateChannel = null
-        presenterCtrlIdx = null
+        try { usbConnection?.device?.close() } catch (_: Exception) {}
+        usbConnection = null
         _connected.value = false
     }
 
