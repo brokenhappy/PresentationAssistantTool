@@ -7,6 +7,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import org.hid4java.HidDevice
@@ -49,7 +50,7 @@ class SpotlightManager(
         pollJob = scope.launch(Dispatchers.IO) {
             while (isActive) {
                 if (device == null && nativeMonitor == null) tryConnect()
-                delay(5000)
+                delay(5.seconds)
             }
         }
     }
@@ -131,14 +132,8 @@ class SpotlightManager(
             onInput = { usagePage, usage, value ->
                 if (usagePage == KEYBOARD_PAGE && value == 1L) {
                     when (usage) {
-                        KEY_RIGHT, KEY_PAGE_DOWN -> {
-                            scope.launch { vibrate(100.milliseconds) }
-                            onEvent(PresentationEvent.Advance)
-                        }
-                        KEY_LEFT, KEY_PAGE_UP -> {
-                            scope.launch { vibrate(100.milliseconds) }
-                            onEvent(PresentationEvent.GoBack)
-                        }
+                        KEY_RIGHT, KEY_PAGE_DOWN -> onEvent(PresentationEvent.Advance)
+                        KEY_LEFT, KEY_PAGE_UP -> onEvent(PresentationEvent.GoBack)
                     }
                 }
             },
@@ -247,14 +242,8 @@ class SpotlightManager(
                     val nextNow = CID_NEXT in pressed
                     val backNow = CID_BACK in pressed
 
-                    if (nextNow && !prevNext) {
-                        scope.launch { vibrate(100.milliseconds) }
-                        onEvent(PresentationEvent.Advance)
-                    }
-                    if (backNow && !prevBack) {
-                        scope.launch { vibrate(100.milliseconds) }
-                        onEvent(PresentationEvent.GoBack)
-                    }
+                    if (nextNow && !prevNext) onEvent(PresentationEvent.Advance)
+                    if (backNow && !prevBack) onEvent(PresentationEvent.GoBack)
 
                     prevNext = nextNow
                     prevBack = backNow
