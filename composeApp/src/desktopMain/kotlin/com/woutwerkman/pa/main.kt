@@ -242,7 +242,7 @@ private fun SpotlightTimingAlerts(
     LaunchedEffect(spotlightManager) {
         TimingAlerts(engine.state) { duration ->
             spotlightManager.vibrate(duration)
-            bleService.sendMessage(BleMessage.Vibrate(duration.inWholeMilliseconds))
+            bleService.sendMessage(BleMessage.Vibrate(duration))
         }.run()
     }
 }

@@ -218,7 +218,7 @@ class IosBlePeripheral(
         heartbeatJob = scope.launch {
             val heartbeat = byteArrayOf(HEARTBEAT_BYTE).toNSData()
             while (isActive) {
-                delay(BleConfig.HEARTBEAT_INTERVAL_MS)
+                delay(BleConfig.HEARTBEAT_INTERVAL)
                 val central = connectedCentral ?: break
                 val char = commandCharacteristic ?: break
                 val pm = peripheralManager ?: break

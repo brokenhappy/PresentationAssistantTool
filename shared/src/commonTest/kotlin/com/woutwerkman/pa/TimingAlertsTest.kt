@@ -29,7 +29,7 @@ class TimingAlertsTest {
         val run = RunRecord(
             id = "r1",
             timestamp = 1000L,
-            bulletPointDurations = profile.orderedKeys.associateWith { average.inWholeMilliseconds },
+            bulletPointDurations = profile.orderedKeys.associateWith { average },
         )
         return PresentationState(
             profile = profile,

@@ -6,7 +6,7 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlin.coroutines.coroutineContext
-import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 import org.slf4j.LoggerFactory
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
@@ -113,7 +113,7 @@ class DesktopBleService(
         scanJob = scope.launch {
             _connectionState.value = BleConnectionState.Scanning
             try {
-                withTimeout(BleConfig.SCAN_DURATION_MS.milliseconds * 3) {
+                withTimeout(BleConfig.SCAN_DURATION * 3) {
                     connectToDevice(targetDeviceId)
                 }
             } catch (_: TimeoutCancellationException) {
@@ -185,7 +185,7 @@ class DesktopBleService(
             } catch (e: Exception) {
                 log.debug("Connection attempt failed, retrying", e)
                 try { p.disconnect() } catch (_: Exception) {}
-                delay(1_000)
+                delay(1.seconds)
             }
         }
     }
@@ -199,13 +199,13 @@ class DesktopBleService(
                 val disconnectedIds = peers.map { it.id }.filter { it !in connectedIds }.toSet()
                 if (disconnectedIds.isNotEmpty()) {
                     try {
-                        withTimeout(BleConfig.SCAN_DURATION_MS.milliseconds) {
+                        withTimeout(BleConfig.SCAN_DURATION) {
                             connectToAnyDevice(disconnectedIds)
                         }
                     } catch (_: Exception) {}
                     updateConnectionState()
                 }
-                delay(BleConfig.RECONNECT_INTERVAL_MS.milliseconds)
+                delay(BleConfig.RECONNECT_INTERVAL)
             }
         }
     }
@@ -222,9 +222,9 @@ class DesktopBleService(
             }
             launch {
                 while (isActive) {
-                    delay(BleConfig.HEARTBEAT_TIMEOUT_MS.milliseconds)
+                    delay(BleConfig.HEARTBEAT_TIMEOUT)
                     val last = lastHeartbeat[deviceId] ?: break
-                    if (System.currentTimeMillis() - last > BleConfig.HEARTBEAT_TIMEOUT_MS) {
+                    if (System.currentTimeMillis() - last > BleConfig.HEARTBEAT_TIMEOUT.inWholeMilliseconds) {
                         handleDisconnect(deviceId)
                         break
                     }

@@ -31,11 +31,11 @@ fun SpeakerNotesView(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             TimerDisplay(
-                elapsedMs = state.currentBulletElapsedMs,
+                elapsed = state.currentBulletElapsed,
                 style = MaterialTheme.typography.headlineMedium,
             )
             DeltaTimerDisplay(
-                deltaMs = state.globalScheduleDelta,
+                delta = state.globalScheduleDelta,
                 style = MaterialTheme.typography.titleMedium,
             )
         }

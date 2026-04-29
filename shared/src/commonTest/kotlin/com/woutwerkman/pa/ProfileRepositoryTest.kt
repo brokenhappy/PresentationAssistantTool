@@ -8,6 +8,9 @@ import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 class ProfileRepositoryTest {
 
@@ -48,7 +51,7 @@ class ProfileRepositoryTest {
         val run = RunRecord(
             id = "run-1",
             timestamp = 1000L,
-            bulletPointDurations = mapOf("a" to 5000L, "b" to 3000L),
+            bulletPointDurations = mapOf("a" to 5.seconds, "b" to 3.seconds),
         )
         val data = ProfileData(profile = profile, runs = listOf(run))
 
@@ -56,41 +59,41 @@ class ProfileRepositoryTest {
         val deserialized = json.decodeFromString<ProfileData>(serialized)
 
         assertEquals(data, deserialized)
-        assertEquals(8000L, deserialized.runs.first().totalDuration)
+        assertEquals(8.seconds, deserialized.runs.first().totalDuration)
     }
 
     @Test
     fun computeStatsWithMultipleRuns() {
         val runs = listOf(
-            RunRecord("1", 100, mapOf("a" to 1000L, "b" to 2000L)),
-            RunRecord("2", 200, mapOf("a" to 2000L, "b" to 3000L)),
-            RunRecord("3", 300, mapOf("a" to 3000L, "b" to 4000L)),
-            RunRecord("4", 400, mapOf("a" to 4000L, "b" to 5000L)),
+            RunRecord("1", 100, mapOf("a" to 1.seconds, "b" to 2.seconds)),
+            RunRecord("2", 200, mapOf("a" to 2.seconds, "b" to 3.seconds)),
+            RunRecord("3", 300, mapOf("a" to 3.seconds, "b" to 4.seconds)),
+            RunRecord("4", 400, mapOf("a" to 4.seconds, "b" to 5.seconds)),
         )
 
         val stats = BulletPointStats.compute(runs)
 
-        assertEquals(2500L, stats.averageDurations["a"])
-        assertEquals(3500L, stats.averageDurations["b"])
-        assertEquals(3000L, stats.lastThreeAverageDurations["a"])
-        assertEquals(4000L, stats.lastThreeAverageDurations["b"])
-        assertEquals(6000L, stats.totalAverage)
-        assertEquals(7000L, stats.totalLastThreeAverage)
-        assertEquals(9000L, stats.lastRunTotal)
+        assertEquals(2500.milliseconds, stats.averageDurations["a"])
+        assertEquals(3500.milliseconds, stats.averageDurations["b"])
+        assertEquals(3.seconds, stats.lastThreeAverageDurations["a"])
+        assertEquals(4.seconds, stats.lastThreeAverageDurations["b"])
+        assertEquals(6.seconds, stats.totalAverage)
+        assertEquals(7.seconds, stats.totalLastThreeAverage)
+        assertEquals(9.seconds, stats.lastRunTotal)
     }
 
     @Test
     fun computeStatsExcludesDeselectedRuns() {
         val runs = listOf(
-            RunRecord("1", 100, mapOf("a" to 1000L), isIncludedInStats = false),
-            RunRecord("2", 200, mapOf("a" to 2000L)),
-            RunRecord("3", 300, mapOf("a" to 4000L)),
+            RunRecord("1", 100, mapOf("a" to 1.seconds), isIncludedInStats = false),
+            RunRecord("2", 200, mapOf("a" to 2.seconds)),
+            RunRecord("3", 300, mapOf("a" to 4.seconds)),
         )
 
         val stats = BulletPointStats.compute(runs)
 
-        assertEquals(3000L, stats.averageDurations["a"])
-        assertEquals(4000L, stats.lastRunTotal)
+        assertEquals(3.seconds, stats.averageDurations["a"])
+        assertEquals(4.seconds, stats.lastRunTotal)
     }
 
     @Test
@@ -99,7 +102,7 @@ class ProfileRepositoryTest {
 
         assertEquals(emptyMap(), stats.averageDurations)
         assertNull(stats.lastRunTotal)
-        assertEquals(0L, stats.totalAverage)
+        assertEquals(Duration.ZERO, stats.totalAverage)
     }
 
     @Test

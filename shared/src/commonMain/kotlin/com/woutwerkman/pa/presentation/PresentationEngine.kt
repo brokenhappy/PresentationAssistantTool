@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
 class PresentationEngine(
@@ -83,8 +84,8 @@ class PresentationEngine(
             it.copy(
                 isActive = true,
                 currentBulletIndex = 0,
-                elapsedMs = 0,
-                currentBulletElapsedMs = 0,
+                elapsed = Duration.ZERO,
+                currentBulletElapsed = Duration.ZERO,
                 currentRunDurations = emptyMap(),
             )
         }
@@ -101,8 +102,8 @@ class PresentationEngine(
         }
 
         val key = current.currentBulletKey ?: return
-        val visitDuration = currentTimeMs() - bulletStartTime
-        val accumulated = (current.currentRunDurations[key] ?: 0L) + visitDuration
+        val visitDuration = (currentTimeMs() - bulletStartTime).milliseconds
+        val accumulated = (current.currentRunDurations[key] ?: Duration.ZERO) + visitDuration
         val updatedDurations = current.currentRunDurations + (key to accumulated)
 
         if (current.isLastBullet) {
@@ -112,13 +113,13 @@ class PresentationEngine(
 
         val nextIndex = current.currentBulletIndex + 1
         val nextKey = current.profile?.keyAt(nextIndex)
-        val nextAccumulated = if (nextKey != null) updatedDurations[nextKey] ?: 0L else 0L
+        val nextAccumulated = if (nextKey != null) updatedDurations[nextKey] ?: Duration.ZERO else Duration.ZERO
 
         bulletStartTime = currentTimeMs()
         _state.update {
             it.copy(
                 currentBulletIndex = nextIndex,
-                currentBulletElapsedMs = nextAccumulated,
+                currentBulletElapsed = nextAccumulated,
                 currentRunDurations = updatedDurations,
             )
         }
@@ -130,22 +131,22 @@ class PresentationEngine(
         if (!current.isActive || index < 0 || index >= current.bulletCount) return
 
         val key = current.currentBulletKey
-        val visitDuration = currentTimeMs() - bulletStartTime
+        val visitDuration = (currentTimeMs() - bulletStartTime).milliseconds
         val updatedDurations = if (key != null) {
-            val accumulated = (current.currentRunDurations[key] ?: 0L) + visitDuration
+            val accumulated = (current.currentRunDurations[key] ?: Duration.ZERO) + visitDuration
             current.currentRunDurations + (key to accumulated)
         } else {
             current.currentRunDurations
         }
 
         val targetKey = current.profile?.keyAt(index)
-        val targetAccumulated = if (targetKey != null) updatedDurations[targetKey] ?: 0L else 0L
+        val targetAccumulated = if (targetKey != null) updatedDurations[targetKey] ?: Duration.ZERO else Duration.ZERO
 
         bulletStartTime = currentTimeMs()
         _state.update {
             it.copy(
                 currentBulletIndex = index,
-                currentBulletElapsedMs = targetAccumulated,
+                currentBulletElapsed = targetAccumulated,
                 currentRunDurations = updatedDurations,
             )
         }
@@ -178,7 +179,7 @@ class PresentationEngine(
         }
     }
 
-    private fun finishPresentation(durations: Map<String, Long>) {
+    private fun finishPresentation(durations: Map<String, Duration>) {
         timerJob?.cancel()
         timerJob = null
 
@@ -205,8 +206,8 @@ class PresentationEngine(
                     isActive = false,
                     runs = updatedRuns,
                     currentBulletIndex = 0,
-                    elapsedMs = 0,
-                    currentBulletElapsedMs = 0,
+                    elapsed = Duration.ZERO,
+                    currentBulletElapsed = Duration.ZERO,
                     currentRunDurations = emptyMap(),
                 )
             }
@@ -222,10 +223,10 @@ class PresentationEngine(
                 val now = currentTimeMs()
                 _state.update {
                     val currentKey = it.currentBulletKey
-                    val accumulated = if (currentKey != null) it.currentRunDurations[currentKey] ?: 0L else 0L
+                    val accumulated = if (currentKey != null) it.currentRunDurations[currentKey] ?: Duration.ZERO else Duration.ZERO
                     it.copy(
-                        elapsedMs = now - presentationStartTime,
-                        currentBulletElapsedMs = accumulated + (now - bulletStartTime),
+                        elapsed = (now - presentationStartTime).milliseconds,
+                        currentBulletElapsed = accumulated + (now - bulletStartTime).milliseconds,
                     )
                 }
             }

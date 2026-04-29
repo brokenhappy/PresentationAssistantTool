@@ -97,12 +97,12 @@ private fun ActiveState(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         TimerDisplay(
-            elapsedMs = state.currentBulletElapsedMs,
+            elapsed = state.currentBulletElapsed,
             style = MaterialTheme.typography.titleMedium,
         )
         Spacer(Modifier.width(6.dp))
         DeltaTimerDisplay(
-            deltaMs = state.globalScheduleDelta,
+            delta = state.globalScheduleDelta,
             style = MaterialTheme.typography.bodySmall,
         )
         Spacer(Modifier.width(12.dp))

@@ -35,8 +35,8 @@ class TimingAlerts(
             fun from(state: PresentationState): ActiveBullet? {
                 if (!state.isActive) return null
                 val avg = state.averageForCurrentBullet ?: return null
-                if (avg == 0L) return null
-                return ActiveBullet(state.currentBulletIndex, avg.milliseconds)
+                if (avg == Duration.ZERO) return null
+                return ActiveBullet(state.currentBulletIndex, avg)
             }
         }
     }

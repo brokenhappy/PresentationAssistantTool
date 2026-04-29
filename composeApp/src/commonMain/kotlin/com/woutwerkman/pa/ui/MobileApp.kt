@@ -17,6 +17,7 @@ import com.woutwerkman.pa.ui.expanded.ExpandedView
 import com.woutwerkman.pa.ui.theme.AppTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
 enum class MobileScreen {
@@ -31,7 +32,7 @@ fun MobileApp(
     bleService: BleService,
     deviceId: String,
     onKeepAwakeChanged: (Boolean) -> Unit,
-    onVibrate: (durationMs: Long) -> Unit = {},
+    onVibrate: (Duration) -> Unit = {},
 ) {
     val connectionState by bleService.connectionState.collectAsState()
     val connectedPeers by bleService.connectedPeers.collectAsState()
@@ -40,34 +41,31 @@ fun MobileApp(
     var state by remember { mutableStateOf(PresentationState()) }
     val scope = rememberCoroutineScope()
 
-    // Absolute timestamps for local timer computation
     var presentationStartMs by remember { mutableLongStateOf(0L) }
     var bulletStartMs by remember { mutableLongStateOf(0L) }
 
-    // Local timer: ticks when presentation is active
     LaunchedEffect(state.isActive) {
         if (state.isActive) {
             while (true) {
                 delay(100.milliseconds)
                 val now = currentTimeMs()
                 val currentKey = state.currentBulletKey
-                val accumulated = if (currentKey != null) state.currentRunDurations[currentKey] ?: 0L else 0L
+                val accumulated = if (currentKey != null) state.currentRunDurations[currentKey] ?: Duration.ZERO else Duration.ZERO
                 state = state.copy(
-                    elapsedMs = now - presentationStartMs,
-                    currentBulletElapsedMs = accumulated + (now - bulletStartMs),
+                    elapsed = (now - presentationStartMs).milliseconds,
+                    currentBulletElapsed = accumulated + (now - bulletStartMs).milliseconds,
                 )
             }
         }
     }
 
-    // Listen for messages from desktop
     LaunchedEffect(bleService) {
         bleService.incomingMessages.collect { message ->
             when (message) {
                 is BleMessage.FullSync -> {
                     val now = currentTimeMs()
-                    presentationStartMs = now - message.state.elapsedMs
-                    bulletStartMs = now - message.state.currentBulletElapsedMs
+                    presentationStartMs = now - message.state.elapsed.inWholeMilliseconds
+                    bulletStartMs = now - message.state.currentBulletElapsed.inWholeMilliseconds
                     state = message.state
                 }
                 is BleMessage.Event -> {
@@ -77,7 +75,7 @@ fun MobileApp(
                             val now = currentTimeMs()
                             presentationStartMs = now
                             bulletStartMs = now
-                        } else if (newState.currentBulletElapsedMs == 0L) {
+                        } else if (newState.currentBulletElapsed == Duration.ZERO) {
                             bulletStartMs = currentTimeMs()
                         }
                         state = newState
@@ -86,19 +84,17 @@ fun MobileApp(
                 is BleMessage.SyncRequest -> {}
                 is BleMessage.Vibrate -> {
                     if (currentScreen != MobileScreen.SpeakerNotes) {
-                        onVibrate(message.durationMs)
+                        onVibrate(message.duration)
                     }
                 }
             }
         }
     }
 
-    // Auto-start BLE advertising
     LaunchedEffect(Unit) {
         bleService.startAdvertisingOrScanning()
     }
 
-    // Navigate to control when connected, and request state from desktop
     LaunchedEffect(connectionState) {
         if (connectionState == BleConnectionState.Connected) {
             if (currentScreen == MobileScreen.Connection) {
@@ -170,8 +166,8 @@ private fun applyRemoteEvent(state: PresentationState, event: PresentationEvent)
         is PresentationEvent.Start -> state.copy(
             isActive = true,
             currentBulletIndex = 0,
-            elapsedMs = 0,
-            currentBulletElapsedMs = 0,
+            elapsed = Duration.ZERO,
+            currentBulletElapsed = Duration.ZERO,
             currentRunDurations = emptyMap(),
         )
         is PresentationEvent.Advance -> {
@@ -181,17 +177,17 @@ private fun applyRemoteEvent(state: PresentationState, event: PresentationEvent)
                 state.copy(
                     isActive = false,
                     currentBulletIndex = 0,
-                    elapsedMs = 0,
-                    currentBulletElapsedMs = 0,
+                    elapsed = Duration.ZERO,
+                    currentBulletElapsed = Duration.ZERO,
                     currentRunDurations = emptyMap(),
                 )
             } else {
                 val nextIndex = state.currentBulletIndex + 1
                 val nextKey = state.profile?.keyAt(nextIndex)
-                val nextAccumulated = if (nextKey != null) updatedDurations[nextKey] ?: 0L else 0L
+                val nextAccumulated = if (nextKey != null) updatedDurations[nextKey] ?: Duration.ZERO else Duration.ZERO
                 state.copy(
                     currentBulletIndex = nextIndex,
-                    currentBulletElapsedMs = nextAccumulated,
+                    currentBulletElapsed = nextAccumulated,
                     currentRunDurations = updatedDurations,
                 )
             }
@@ -201,20 +197,20 @@ private fun applyRemoteEvent(state: PresentationState, event: PresentationEvent)
             val updatedDurations = saveBulletDuration(state)
             val targetIndex = state.currentBulletIndex - 1
             val targetKey = state.profile?.keyAt(targetIndex)
-            val targetAccumulated = if (targetKey != null) updatedDurations[targetKey] ?: 0L else 0L
+            val targetAccumulated = if (targetKey != null) updatedDurations[targetKey] ?: Duration.ZERO else Duration.ZERO
             state.copy(
                 currentBulletIndex = targetIndex,
-                currentBulletElapsedMs = targetAccumulated,
+                currentBulletElapsed = targetAccumulated,
                 currentRunDurations = updatedDurations,
             )
         }
         is PresentationEvent.GoTo -> {
             val updatedDurations = saveBulletDuration(state)
             val targetKey = state.profile?.keyAt(event.index)
-            val targetAccumulated = if (targetKey != null) updatedDurations[targetKey] ?: 0L else 0L
+            val targetAccumulated = if (targetKey != null) updatedDurations[targetKey] ?: Duration.ZERO else Duration.ZERO
             state.copy(
                 currentBulletIndex = event.index,
-                currentBulletElapsedMs = targetAccumulated,
+                currentBulletElapsed = targetAccumulated,
                 currentRunDurations = updatedDurations,
             )
         }
@@ -224,9 +220,9 @@ private fun applyRemoteEvent(state: PresentationState, event: PresentationEvent)
     }
 }
 
-private fun saveBulletDuration(state: PresentationState): Map<String, Long> {
+private fun saveBulletDuration(state: PresentationState): Map<String, Duration> {
     val key = state.currentBulletKey ?: return state.currentRunDurations
-    return state.currentRunDurations + (key to state.currentBulletElapsedMs)
+    return state.currentRunDurations + (key to state.currentBulletElapsed)
 }
 
 private fun currentTimeMs(): Long = com.woutwerkman.pa.platform.currentTimeMs()

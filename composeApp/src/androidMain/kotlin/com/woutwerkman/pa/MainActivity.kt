@@ -79,7 +79,7 @@ class MainActivity : ComponentActivity() {
                                 window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                             }
                         },
-                        onVibrate = { durationMs -> vibrate(durationMs) },
+                        onVibrate = ::vibrate,
                     )
                 } else {
                     PermissionDeniedScreen(
@@ -99,13 +99,13 @@ class MainActivity : ComponentActivity() {
     }
 
     @Suppress("DEPRECATION")
-    private fun vibrate(durationMs: Long) {
+    private fun vibrate(duration: kotlin.time.Duration) {
         val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             (getSystemService(VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
         } else {
             getSystemService(VIBRATOR_SERVICE) as Vibrator
         }
-        vibrator.vibrate(VibrationEffect.createOneShot(durationMs, VibrationEffect.DEFAULT_AMPLITUDE))
+        vibrator.vibrate(VibrationEffect.createOneShot(duration.inWholeMilliseconds, VibrationEffect.DEFAULT_AMPLITUDE))
     }
 
     private fun getOrCreateDeviceId(): String {

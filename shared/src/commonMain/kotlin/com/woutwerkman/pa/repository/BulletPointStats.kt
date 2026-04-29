@@ -1,20 +1,22 @@
 package com.woutwerkman.pa.repository
 
 import com.woutwerkman.pa.model.RunRecord
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.milliseconds
 
 data class BulletPointStats(
-    val averageDurations: Map<String, Long>,
-    val lastThreeAverageDurations: Map<String, Long>,
-    val totalAverage: Long,
-    val totalLastThreeAverage: Long,
-    val lastRunTotal: Long?,
+    val averageDurations: Map<String, Duration>,
+    val lastThreeAverageDurations: Map<String, Duration>,
+    val totalAverage: Duration,
+    val totalLastThreeAverage: Duration,
+    val lastRunTotal: Duration?,
 ) {
     companion object {
         val EMPTY = BulletPointStats(
             averageDurations = emptyMap(),
             lastThreeAverageDurations = emptyMap(),
-            totalAverage = 0,
-            totalLastThreeAverage = 0,
+            totalAverage = Duration.ZERO,
+            totalLastThreeAverage = Duration.ZERO,
             lastRunTotal = null,
         )
 
@@ -26,20 +28,22 @@ data class BulletPointStats(
 
             val averageDurations = allKeys.associateWith { key ->
                 val durations = included.mapNotNull { it.bulletPointDurations[key] }
-                if (durations.isEmpty()) 0L else durations.average().toLong()
+                if (durations.isEmpty()) Duration.ZERO
+                else durations.map { it.inWholeMilliseconds }.average().toLong().milliseconds
             }
 
             val lastThree = included.sortedByDescending { it.timestamp }.take(3)
             val lastThreeAverageDurations = allKeys.associateWith { key ->
                 val durations = lastThree.mapNotNull { it.bulletPointDurations[key] }
-                if (durations.isEmpty()) 0L else durations.average().toLong()
+                if (durations.isEmpty()) Duration.ZERO
+                else durations.map { it.inWholeMilliseconds }.average().toLong().milliseconds
             }
 
             return BulletPointStats(
                 averageDurations = averageDurations,
                 lastThreeAverageDurations = lastThreeAverageDurations,
-                totalAverage = included.map { it.totalDuration }.average().toLong(),
-                totalLastThreeAverage = lastThree.map { it.totalDuration }.average().toLong(),
+                totalAverage = included.map { it.totalDuration.inWholeMilliseconds }.average().toLong().milliseconds,
+                totalLastThreeAverage = lastThree.map { it.totalDuration.inWholeMilliseconds }.average().toLong().milliseconds,
                 lastRunTotal = included.maxByOrNull { it.timestamp }?.totalDuration,
             )
         }

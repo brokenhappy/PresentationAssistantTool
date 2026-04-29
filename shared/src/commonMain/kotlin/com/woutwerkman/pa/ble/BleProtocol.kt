@@ -1,9 +1,14 @@
+@file:UseSerializers(DurationAsLongMillisSerializer::class)
+
 package com.woutwerkman.pa.ble
 
+import com.woutwerkman.pa.model.DurationAsLongMillisSerializer
 import com.woutwerkman.pa.presentation.PresentationEvent
 import com.woutwerkman.pa.presentation.PresentationState
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.UseSerializers
 import kotlinx.serialization.json.Json
+import kotlin.time.Duration
 
 val bleJson = Json {
     ignoreUnknownKeys = true
@@ -22,7 +27,7 @@ sealed interface BleMessage {
     data object SyncRequest : BleMessage
 
     @Serializable
-    data class Vibrate(val durationMs: Long) : BleMessage
+    data class Vibrate(val duration: Duration) : BleMessage
 }
 
 fun BleMessage.encode(): ByteArray =

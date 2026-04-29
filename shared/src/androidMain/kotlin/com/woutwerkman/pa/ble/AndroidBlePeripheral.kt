@@ -293,7 +293,7 @@ class AndroidBlePeripheral(
         heartbeatJob = scope.launch {
             val heartbeat = byteArrayOf(HEARTBEAT_BYTE)
             while (isActive) {
-                delay(BleConfig.HEARTBEAT_INTERVAL_MS)
+                delay(BleConfig.HEARTBEAT_INTERVAL)
                 val device = connectedDevice ?: break
                 val server = gattServer ?: break
                 val service = server.getService(serviceUuid) ?: break

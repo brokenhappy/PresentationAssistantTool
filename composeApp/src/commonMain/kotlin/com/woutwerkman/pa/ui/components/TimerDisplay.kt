@@ -6,16 +6,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
+import kotlin.time.Duration
 
 @Composable
 fun TimerDisplay(
-    elapsedMs: Long,
+    elapsed: Duration,
     modifier: Modifier = Modifier,
     style: TextStyle = MaterialTheme.typography.titleMedium,
     color: Color = MaterialTheme.colorScheme.onSurface,
 ) {
     Text(
-        text = formatTimer(elapsedMs),
+        text = formatTimer(elapsed),
         style = style,
         color = color,
         modifier = modifier,
@@ -24,28 +25,29 @@ fun TimerDisplay(
 
 @Composable
 fun DeltaTimerDisplay(
-    deltaMs: Long?,
+    delta: Duration?,
     modifier: Modifier = Modifier,
     style: TextStyle = MaterialTheme.typography.bodySmall,
 ) {
-    if (deltaMs == null) return
-    val sign = if (deltaMs >= 0) "+" else "-"
-    val absMs = if (deltaMs < 0) -deltaMs else deltaMs
-    val color = if (deltaMs > 0) {
+    if (delta == null) return
+    val isNegative = delta.isNegative()
+    val sign = if (isNegative) "-" else "+"
+    val abs = delta.absoluteValue
+    val color = if (!isNegative) {
         MaterialTheme.colorScheme.error
     } else {
         MaterialTheme.colorScheme.secondary
     }
     Text(
-        text = "$sign${formatTimer(absMs)}",
+        text = "$sign${formatTimer(abs)}",
         style = style,
         color = color,
         modifier = modifier,
     )
 }
 
-fun formatTimer(ms: Long): String {
-    val totalSeconds = ms / 1000
+fun formatTimer(duration: Duration): String {
+    val totalSeconds = duration.inWholeSeconds
     val minutes = totalSeconds / 60
     val seconds = totalSeconds % 60
     return "$minutes:${seconds.toString().padStart(2, '0')}"

@@ -79,7 +79,7 @@ private fun ActiveHeader(state: PresentationState) {
             fontWeight = FontWeight.Bold,
             modifier = Modifier.weight(1f),
         )
-        TimerDisplay(elapsedMs = state.elapsedMs)
+        TimerDisplay(elapsed = state.elapsed)
     }
 }
 
