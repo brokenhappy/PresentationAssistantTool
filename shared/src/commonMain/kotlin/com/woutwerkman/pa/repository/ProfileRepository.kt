@@ -19,14 +19,14 @@ class ProfileRepository(private val fileSystem: FileSystem) {
     }
 
     suspend fun loadProfileData(title: String): ProfileData? {
-        val storagePath = profileStoragePath(title)
+        val storagePath = profileStoragePath(title, fileSystem.appDataDir)
         if (!fileSystem.exists(storagePath)) return null
         val text = fileSystem.readText(storagePath)
         return json.decodeFromString<ProfileData>(text)
     }
 
     suspend fun saveProfileData(data: ProfileData) {
-        val storagePath = profileStoragePath(data.profile.title)
+        val storagePath = profileStoragePath(data.profile.title, fileSystem.appDataDir)
         fileSystem.ensureParentExists(storagePath)
         fileSystem.writeText(storagePath, json.encodeToString(ProfileData.serializer(), data))
     }
@@ -36,12 +36,12 @@ class ProfileRepository(private val fileSystem: FileSystem) {
         val existing = loadProfileData(profile.title)
         return existing?.copy(profile = profile) ?: ProfileData(profile = profile)
     }
+}
 
-    private fun profileStoragePath(title: String): String {
-        val hash = title.encodeToByteArray()
-            .fold(0L) { acc, byte -> acc * 31 + byte.toLong() }
-            .let { if (it < 0) -it else it }
-            .toString(16)
-        return "${fileSystem.appDataDir}/profiles/$hash.json"
-    }
+private fun profileStoragePath(title: String, appDataDir: String): String {
+    val hash = title.encodeToByteArray()
+        .fold(0L) { acc, byte -> acc * 31 + byte.toLong() }
+        .let { if (it < 0) -it else it }
+        .toString(16)
+    return "$appDataDir/profiles/$hash.json"
 }
